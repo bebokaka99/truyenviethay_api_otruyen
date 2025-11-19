@@ -1,56 +1,56 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightSLine } from 'react-icons/ri';
 
-const HugeGridSection = ({ title, stories, domainAnh }) => {
-  if (!stories || stories.length === 0) return null;
-  
-  const formatChapter = (truyen) => {
-    const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || 'Full';
-    const chapNum = chapRaw.replace(/chapter/gi, '').replace(/chương/gi, '').trim();
-    return isNaN(chapNum) && chapNum !== 'Full' ? `Chương ${chapNum}` : (chapNum === 'Full' ? 'Full' : `Chương ${chapNum}`);
-  };
-
+const HeroSection = () => {
   return (
-    <div className="py-6 md:py-10 px-3 sm:px-8 md:px-20">
-      <div className="flex items-center justify-between mb-4 md:mb-8">
-        <h3 className="text-white text-xl md:text-3xl font-bold relative pl-3 md:pl-4 border-l-4 border-primary truncate">
-          {title}
-        </h3>
-        <Link to="/danh-sach" className="text-xs md:text-sm font-bold text-white/60 hover:text-primary flex items-center gap-1 transition-colors whitespace-nowrap">
-          Xem tất cả <RiArrowRightSLine />
-        </Link>
-      </div>
+    // Thêm bg-gray-900 để nếu ảnh lỗi thì vẫn thấy nền màu tối
+    <div className="relative w-full mb-8 md:mb-12 group font-display bg-gray-900">
+      
+      {/* Background Image Container */}
+      <div 
+        className="relative flex min-h-[50vh] md:min-h-[65vh] flex-col gap-4 md:gap-6 items-start justify-center px-4 sm:px-8 md:px-20 pb-10 overflow-hidden"
+      >
+        {/* 1. Ảnh nền (Dùng thẻ img absolute để chắc chắn hiện, thay vì background-image css dễ lỗi đường dẫn) */}
+        <div className="absolute inset-0 z-0">
+            <img 
+                src="/images/banner.jpg" 
+                alt="Banner" 
+                className="w-full h-full object-cover object-center opacity-60"
+                onError={(e) => {
+                    e.target.style.display = 'none'; // Ẩn ảnh nếu lỗi, hiện nền xám
+                }}
+            />
+            {/* Gradient phủ lên ảnh */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0f0f1e] via-[#0f0f1e]/80 to-transparent/30"></div>
+        </div>
 
-      {/* ĐÃ SỬA: grid-cols-2 cho mobile */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
-        {stories.map((truyen) => (
-          <Link key={truyen._id} to={`/truyen-tranh/${truyen.slug}`} className="flex flex-col gap-2 group cursor-pointer">
-            <div className="w-full aspect-[2/3] bg-[#1f1f3a] rounded-lg overflow-hidden relative border border-white/5 group-hover:border-green-500/50 transition-all shadow-sm">
-              <img 
-                src={`${domainAnh}/uploads/comics/${truyen.thumb_url}`}
-                alt={truyen.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              {/* Badge Chapter nhỏ gọn */}
-              <div className="absolute top-1.5 right-1.5 bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                 {formatChapter(truyen)}
-              </div>
-              
-              {/* Overlay đọc ngay */}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hidden md:flex">
-                  <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full">Đọc ngay</span>
-              </div>
-            </div>
-            <h4 className="text-gray-200 text-xs md:text-sm font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5em]">
-              {truyen.name}
-            </h4>
-          </Link>
-        ))}
+        {/* 2. Nội dung text (Z-index cao hơn để nổi lên trên) */}
+        <div className="relative z-10 flex flex-col gap-3 md:gap-5 text-left max-w-3xl mt-10 md:mt-0">
+          <span className="inline-block py-1 px-3 rounded bg-white/10 border border-white/10 text-blue-400 text-[10px] md:text-xs font-bold tracking-wider uppercase w-fit backdrop-blur-md">
+            #1 Web Truyện Tranh
+          </span>
+          
+          <h1 className="text-white text-3xl sm:text-5xl md:text-7xl font-heading font-black leading-tight drop-shadow-2xl">
+            Thế Giới Truyện <br/> 
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-400">Đa Sắc Màu</span>
+          </h1>
+          
+          <p className="text-gray-300 text-sm md:text-lg max-w-xl leading-relaxed font-medium opacity-90 line-clamp-3 md:line-clamp-none">
+            Kho tàng Manhwa, Manga, Manhua cập nhật liên tục 24/7. Giao diện mượt mà, tối ưu trải nghiệm đọc trên mọi thiết bị.
+          </p>
+
+          <div className="flex flex-wrap gap-3 mt-4">
+            <Link to="/register" className="flex items-center justify-center rounded-full h-10 md:h-12 px-6 md:px-8 bg-primary text-white text-sm md:text-base font-bold hover:bg-blue-600 transition-all shadow-lg shadow-primary/40 hover:-translate-y-1">
+              Đăng Ký Ngay
+            </Link>
+            <Link to="/about" className="flex items-center justify-center rounded-full h-10 md:h-12 px-6 md:px-8 bg-white/5 border border-white/10 text-white text-sm md:text-base font-bold hover:bg-white/10 transition-colors backdrop-blur-sm">
+              Khám Phá
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default HugeGridSection;
+export default HeroSection;

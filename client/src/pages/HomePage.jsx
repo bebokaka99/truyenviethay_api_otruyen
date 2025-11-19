@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/layouts/Header';
-import HeroSection from '../components/home/HeroSection';
+import Footer from '../components/layouts/Footer'; // Nhớ import Footer
+import HeroSection from '../components/home/HeroSection'; // Import HeroSection
 import AutoSlideSection from '../components/home/AutoSlideSection';
 import HugeGridSection from '../components/home/HugeGridSection';
 
 const HomePage = () => {
+  // --- STATE ---
   const [newUpdateStories, setNewUpdateStories] = useState([]); // Slider
-  const [hotStories, setHotStories] = useState([]); // Grid Hot (120 truyện)
+  const [hotStories, setHotStories] = useState([]); // Grid Hot
   
-  // State cho 3 danh sách mới
+  // Các thể loại phổ biến
   const [mangaStories, setMangaStories] = useState([]);
   const [manhwaStories, setManhwaStories] = useState([]);
   const [manhuaStories, setManhuaStories] = useState([]);
+  const [ngonTinhStories, setNgonTinhStories] = useState([]);
 
   const [domainAnh, setDomainAnh] = useState('');
   const [loading, setLoading] = useState(true);
@@ -20,14 +23,13 @@ const HomePage = () => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // 1. Lấy thông tin cơ bản từ Home (Domain ảnh + Slider truyện mới)
+        // 1. Lấy cấu hình chung & Slider (API Home)
         const homeRes = await axios.get('https://otruyenapi.com/v1/api/home');
         const domain = homeRes.data.data.APP_DOMAIN_CDN_IMAGE;
         setDomainAnh(domain);
         setNewUpdateStories(homeRes.data.data.items);
 
-        // --- HÀM HELPER ĐỂ GỌI NHIỀU TRANG ---
-        // Giúp lấy số lượng lớn truyện (page 1 -> pageLimit)
+        // --- HÀM HELPER GỌI NHIỀU TRANG ---
         const fetchMultiPage = async (urlInfo, pageLimit) => {
             const promises = [];
             for (let i = 1; i <= pageLimit; i++) {
@@ -40,33 +42,29 @@ const HomePage = () => {
                     allItems = [...allItems, ...res.data.data.items];
                 }
             });
-            return allItems;
+            // Lọc trùng lặp ID
+            return Array.from(new Map(allItems.map(item => [item._id, item])).values());
         };
 
-        // 2. Gọi dữ liệu song song cho các section
-        const [hotData, mangaData, manhwaData, manhuaData] = await Promise.all([
-            // Truyện Hot: Lấy 5 trang (khoảng 120 truyện)
-            fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 5),
-            
-            // Manga: Lấy 2 trang (khoảng 48 truyện)
+        // 2. Gọi song song dữ liệu các phần (Tối ưu tốc độ)
+        const [hotData, mangaData, manhwaData, manhuaData, ngonTinhData] = await Promise.all([
+            fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 3), // Lấy 3 trang truyện mới làm "Hot"
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manga', 2),
-            
-            // Manhwa: Lấy 2 trang
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhwa', 2),
-            
-            // Manhua: Lấy 2 trang
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhua', 2),
+            fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/ngon-tinh', 2),
         ]);
 
         setHotStories(hotData);
         setMangaStories(mangaData);
         setManhwaStories(manhwaData);
         setManhuaStories(manhuaData);
+        setNgonTinhStories(ngonTinhData);
 
         setLoading(false);
 
       } catch (err) {
-        console.error("Lỗi tải dữ liệu:", err);
+        console.error("Lỗi tải dữ liệu trang chủ:", err);
         setLoading(false);
       }
     };
@@ -81,53 +79,64 @@ const HomePage = () => {
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center min-h-[80vh]">
            <div className="w-16 h-16 border-4 border-white/10 border-t-primary rounded-full animate-spin mb-4"></div>
-           <p className="text-white/50 animate-pulse font-bold">Đang tải kho truyện Quicksand...</p>
+           <p className="text-white/50 animate-pulse font-bold text-sm">Đang tải kho truyện...</p>
         </div>
       ) : (
         <main className="flex-1 pb-20">
+          
+          {/* 1. HERO SECTION (BANNER LỚN) */}
           <HeroSection />
 
-          {/* 1. Slider: Truyện mới cập nhật */}
+          {/* 2. SLIDER: TRUYỆN MỚI CẬP NHẬT */}
           <AutoSlideSection 
-            title="Truyện Mới Cập Nhật" 
+            title="Mới Cập Nhật" 
             stories={newUpdateStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 2. Grid: Truyện Hot Mới */}
+          {/* 3. GRID: TRUYỆN HOT (Nhiều truyện nhất) */}
           <HugeGridSection 
             title="Truyện Hot Mới" 
             stories={hotStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 3. Grid: Manga (Truyện Nhật) */}
-          {/* Dùng background khác màu xíu để phân cách visually */}
-          <div className="bg-[#0f0f25]"> 
+          {/* 4. GRID: MANHWA (Hàn Quốc) */}
+          <div className="bg-[#151525]">
             <HugeGridSection 
-              title="Manga Nổi Bật" 
+              title="Manhwa Cực Phẩm" 
+              stories={manhwaStories} 
+              domainAnh={domainAnh}
+            />
+          </div>
+
+          {/* 5. GRID: MANHUA (Trung Quốc) */}
+          <HugeGridSection 
+            title="Manhua Chọn Lọc" 
+            stories={manhuaStories} 
+            domainAnh={domainAnh}
+          />
+
+          {/* 6. GRID: MANGA (Nhật Bản) */}
+          <div className="bg-[#151525]">
+            <HugeGridSection 
+              title="Manga Kinh Điển" 
               stories={mangaStories} 
               domainAnh={domainAnh}
             />
           </div>
 
-          {/* 4. Grid: Manhwa (Truyện Hàn) */}
+          {/* 7. GRID: NGÔN TÌNH */}
           <HugeGridSection 
-            title="Manhwa Cực Phẩm" 
-            stories={manhwaStories} 
+            title="Ngôn Tình Lãng Mạn" 
+            stories={ngonTinhStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 5. Grid: Manhua (Truyện Trung) */}
-          <div className="bg-[#0f0f25]">
-            <HugeGridSection 
-              title="Manhua Chọn Lọc" 
-              stories={manhuaStories} 
-              domainAnh={domainAnh}
-            />
-          </div>
         </main>
       )}
+
+      <Footer />
     </div>
   );
 };
