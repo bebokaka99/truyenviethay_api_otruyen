@@ -2,24 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const dotenv = require('dotenv');
+const path = require('path'); // <--- BẮT BUỘC PHẢI CÓ DÒNG NÀY
 
-dotenv.config(); // Load biến môi trường từ file .env
+dotenv.config(); 
 
-const authRoutes = require('./routes/auth'); // Import route Auth
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
 
 // Cấu hình
 app.use(cors());
-app.use(express.json()); // Để server hiểu JSON từ React gửi lên
+app.use(express.json());
+
+// --- CẤU HÌNH STATIC FILE (Để xem ảnh avatar upload lên) ---
+// Dòng này giúp đường dẫn http://localhost:5000/uploads/avatars/ten-anh.jpg hoạt động
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
-app.use('/api/auth', authRoutes); // Gắn route Auth vào đường dẫn gốc /api/auth
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 
 // Route test
 app.get('/', (req, res) => {
     res.send('Backend Node.js đang chạy ổn định!');
 });
 
-// API Proxy Otruyen (Giữ lại code cũ của bạn ở đây)
+// API Proxy Otruyen
 const axios = require('axios');
 app.get('/api/home', async (req, res) => {
     try {

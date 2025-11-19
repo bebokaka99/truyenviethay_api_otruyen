@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-// 1. IMPORT useAuth
 import { useAuth } from '../../contexts/AuthContext'; 
 import { 
   RiSearchLine, RiMenu3Line, RiCloseLine, 
-  RiBarChartHorizontalLine, RiHistoryLine, RiHeart3Line,
-  RiUser3Line, RiLogoutBoxRLine, RiArrowDownSLine
+  RiHistoryLine, RiHeart3Line,
+  RiLogoutBoxRLine, RiArrowDownSLine, RiUserSettingsLine
 } from 'react-icons/ri';
 
 const Header = () => {
@@ -14,12 +13,16 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   
-  // 2. LẤY USER VÀ HÀM LOGOUT TỪ CONTEXT
   const { user, logout } = useAuth(); 
   const navigate = useNavigate();
-
-  // State cho dropdown user menu
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // --- LOGIC AVATAR ---
+  const getAvatarUrl = (avatarPath) => {
+      if (!avatarPath) return null;
+      if (avatarPath.startsWith('http')) return avatarPath; // Link online
+      return `http://localhost:5000/${avatarPath}`; // Link local server
+  };
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -39,11 +42,9 @@ const Header = () => {
     }
   };
 
-  // Hàm đăng xuất
   const handleLogout = () => {
       logout();
       setShowUserMenu(false);
-      navigate('/login');
   };
 
   return (
@@ -52,15 +53,13 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           
           {/* LOGO */}
-          <Link to="/" className="flex-shrink-0 flex items-center gap-2">
+          <Link to="/" className="flex-shrink-0">
              <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain" />
-             <span className="text-white font-black text-lg hidden sm:block tracking-tight">COMIC<span className="text-primary">STREAM</span></span>
           </Link>
 
           {/* DESKTOP NAV */}
           <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
             <Link to="/" className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider">Trang Chủ</Link>
-            
             <div className="group relative py-4">
               <button className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1">
                  Thể Loại
@@ -74,10 +73,7 @@ const Header = () => {
                  <Link to="/danh-sach" className="col-span-4 text-center text-primary text-xs font-bold pt-2 hover:underline">Xem tất cả</Link>
               </div>
             </div>
-
-            <Link to="/xep-hang" className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-               Xếp Hạng
-            </Link>
+            <Link to="/xep-hang" className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1">Xếp Hạng</Link>
           </nav>
 
           {/* RIGHT ACTIONS */}
@@ -94,38 +90,52 @@ const Header = () => {
                />
             </div>
             
-            {/* 3. LOGIC HIỂN THỊ USER HOẶC LOGIN */}
+            {/* USER MENU */}
             {user ? (
                 <div className="relative">
                     <button 
                         onClick={() => setShowUserMenu(!showUserMenu)}
                         className="flex items-center gap-2 bg-[#252538] hover:bg-white/10 border border-white/5 rounded-full py-1 pr-3 pl-1 transition-all"
                     >
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                            {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                        {/* AVATAR */}
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 border border-white/10">
+                            {user.avatar ? (
+                                <img src={getAvatarUrl(user.avatar)} alt="Avt" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center font-bold text-white bg-gradient-to-tr from-primary to-purple-600">
+                                    {user.full_name?.charAt(0).toUpperCase()}
+                                </div>
+                            )}
                         </div>
+                        
                         <span className="text-xs font-bold text-white max-w-[100px] truncate hidden sm:block">
                             {user.full_name}
                         </span>
                         <RiArrowDownSLine className="text-gray-400" />
                     </button>
 
-                    {/* Dropdown User */}
                     {showUserMenu && (
-                        <div className="absolute right-0 mt-2 w-48 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl py-2 animate-fade-in-up z-50">
-                            <div className="px-4 py-2 border-b border-white/5 mb-1">
+                        <div className="absolute right-0 mt-2 w-56 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl py-2 animate-fade-in-up z-50">
+                            <div className="px-4 py-3 border-b border-white/5 mb-1 bg-white/5">
                                 <p className="text-white text-sm font-bold truncate">{user.full_name}</p>
                                 <p className="text-gray-500 text-xs truncate">@{user.username}</p>
                             </div>
-                            <Link to="/lich-su" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors">
-                                <RiHistoryLine /> Lịch Sử Đọc
+                            
+                            {/* LINK PROFILE MỚI */}
+                            <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                <RiUserSettingsLine size={18} /> Thông Tin Cá Nhân
                             </Link>
-                            <Link to="/theo-doi" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors">
-                                <RiHeart3Line /> Tủ Truyện
+
+                            <Link to="/lich-su" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                <RiHistoryLine size={18} /> Lịch Sử Đọc
                             </Link>
+                            <Link to="/theo-doi" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                <RiHeart3Line size={18} /> Tủ Truyện
+                            </Link>
+                            
                             <div className="border-t border-white/5 my-1"></div>
-                            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors text-left">
-                                <RiLogoutBoxRLine /> Đăng Xuất
+                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors text-left font-bold">
+                                <RiLogoutBoxRLine size={18} /> Đăng Xuất
                             </button>
                         </div>
                     )}
@@ -137,7 +147,6 @@ const Header = () => {
                 </div>
             )}
 
-            {/* MOBILE TOGGLE */}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden text-white text-2xl p-1">
               {mobileMenuOpen ? <RiCloseLine /> : <RiMenu3Line />}
             </button>
@@ -145,7 +154,7 @@ const Header = () => {
         </div>
       </div>
 
-      {/* MOBILE MENU DRAWER */}
+      {/* MOBILE MENU */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#1a1a2e] border-t border-white/10 p-4 absolute w-full shadow-2xl z-50 h-screen overflow-y-auto pb-20">
            <div className="flex flex-col gap-2">
@@ -160,19 +169,20 @@ const Header = () => {
                     onKeyDown={handleSearch} 
                  />
               </div>
-
               <Link to="/" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5" onClick={() => setMobileMenuOpen(false)}>Trang Chủ</Link>
-              
               {user ? (
                   <>
+                    <Link to="/profile" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
+                        <RiUserSettingsLine className="text-primary"/> Thông Tin Cá Nhân
+                    </Link>
                     <Link to="/lich-su" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
                         <RiHistoryLine className="text-primary"/> Lịch Sử Đọc
                     </Link>
                     <Link to="/theo-doi" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
-                        <RiHeart3Line className="text-primary"/> Truyện Theo Dõi
+                        <RiHeart3Line className="text-primary"/> Tủ Truyện
                     </Link>
                     <button onClick={handleLogout} className="text-red-400 font-bold p-3 rounded hover:bg-white/5 text-left flex items-center gap-2">
-                        <RiLogoutBoxRLine /> Đăng Xuất ({user.username})
+                        <RiLogoutBoxRLine /> Đăng Xuất
                     </button>
                   </>
               ) : (

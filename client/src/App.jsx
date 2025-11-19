@@ -6,8 +6,11 @@ import SearchPage from './pages/SearchPage';
 import CategoryPage from './pages/CategoryPage';
 import ListPage from './pages/ListPage';
 import RankingPage from './pages/RankingPage';
-import LoginPage from './pages/LoginPage'; // Mới
-import RegisterPage from './pages/RegisterPage'; // Mới
+import LoginPage from './pages/LoginPage'; 
+import RegisterPage from './pages/RegisterPage'; 
+import LibraryPage from './pages/LibraryPage';
+import HistoryPage from './pages/HistoryPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
        {/* Route Auth */}
        <Route path="/login" element={<LoginPage />} />
        <Route path="/register" element={<RegisterPage />} />
+       <Route path="/theo-doi" element={<LibraryPage />} />
+       <Route path="/lich-su" element={<HistoryPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
     </Routes>
   );
 }
