@@ -1,31 +1,36 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios'); 
 const app = express();
-const PORT = 5000;
+const dotenv = require('dotenv');
 
-// Cấu hình cơ bản
-app.use(cors()); 
-app.use(express.json());
+dotenv.config(); // Load biến môi trường từ file .env
 
-// 1. API Lấy danh sách truyện trang chủ
-app.get('/api/home', async (req, res) => {
-    try {
-        const response = await axios.get('https://otruyenapi.com/v1/api/home');
-        
-        res.json(response.data); 
-    } catch (error) {
-        console.error("Lỗi khi gọi API Otruyen:", error.message);
-        res.status(500).json({ message: "Lỗi server khi lấy danh sách truyện" });
-    }
-});
+const authRoutes = require('./routes/auth'); // Import route Auth
 
-// Route kiểm tra server
+// Cấu hình
+app.use(cors());
+app.use(express.json()); // Để server hiểu JSON từ React gửi lên
+
+// Routes
+app.use('/api/auth', authRoutes); // Gắn route Auth vào đường dẫn gốc /api/auth
+
+// Route test
 app.get('/', (req, res) => {
     res.send('Backend Node.js đang chạy ổn định!');
 });
 
-// Khởi chạy server
+// API Proxy Otruyen (Giữ lại code cũ của bạn ở đây)
+const axios = require('axios');
+app.get('/api/home', async (req, res) => {
+    try {
+        const response = await axios.get('https://otruyenapi.com/v1/api/home');
+        res.json(response.data);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi lấy data Otruyen" });
+    }
+});
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });

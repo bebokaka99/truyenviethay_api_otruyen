@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+// 1. IMPORT useAuth
+import { useAuth } from '../../contexts/AuthContext'; 
 import { 
   RiSearchLine, RiMenu3Line, RiCloseLine, 
-  RiBarChartHorizontalLine, RiHistoryLine, RiHeart3Line 
+  RiBarChartHorizontalLine, RiHistoryLine, RiHeart3Line,
+  RiUser3Line, RiLogoutBoxRLine, RiArrowDownSLine
 } from 'react-icons/ri';
 
 const Header = () => {
   const [categories, setCategories] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
-  // 1. State lưu từ khóa tìm kiếm
   const [keyword, setKeyword] = useState('');
-  const navigate = useNavigate(); // Hook để chuyển trang
+  
+  // 2. LẤY USER VÀ HÀM LOGOUT TỪ CONTEXT
+  const { user, logout } = useAuth(); 
+  const navigate = useNavigate();
+
+  // State cho dropdown user menu
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -24,13 +31,19 @@ const Header = () => {
     fetchCategories();
   }, []);
 
-  // 2. Hàm xử lý khi bấm Enter hoặc nút Tìm
   const handleSearch = (e) => {
     if (e.key === 'Enter' && keyword.trim()) {
-      setMobileMenuOpen(false); // Đóng menu mobile nếu đang mở
-      navigate(`/tim-kiem?keyword=${encodeURIComponent(keyword)}`); // Chuyển sang trang tìm kiếm
-      setKeyword(''); // (Tuỳ chọn) Xóa ô tìm kiếm sau khi enter
+      setMobileMenuOpen(false);
+      navigate(`/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
+      setKeyword('');
     }
+  };
+
+  // Hàm đăng xuất
+  const handleLogout = () => {
+      logout();
+      setShowUserMenu(false);
+      navigate('/login');
   };
 
   return (
@@ -41,7 +54,7 @@ const Header = () => {
           {/* LOGO */}
           <Link to="/" className="flex-shrink-0 flex items-center gap-2">
              <img src="/logo.png" alt="Logo" className="h-8 w-auto object-contain" />
-             <span className="text-white font-black text-lg hidden sm:block tracking-tight">TRUYEN<span className="text-primary">VIETHAY</span></span>
+             <span className="text-white font-black text-lg hidden sm:block tracking-tight">COMIC<span className="text-primary">STREAM</span></span>
           </Link>
 
           {/* DESKTOP NAV */}
@@ -65,14 +78,10 @@ const Header = () => {
             <Link to="/xep-hang" className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1">
                Xếp Hạng
             </Link>
-            <Link to="/lich-su" className="text-gray-300 hover:text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-               Lịch Sử
-            </Link>
           </nav>
 
           {/* RIGHT ACTIONS */}
           <div className="flex items-center gap-3">
-            {/* 3. INPUT TÌM KIẾM (DESKTOP) */}
             <div className="hidden md:flex items-center bg-[#252538] rounded-full px-3 py-1.5 border border-white/5 focus-within:border-primary/50 transition-colors">
                <RiSearchLine className="text-gray-500" />
                <input 
@@ -85,11 +94,50 @@ const Header = () => {
                />
             </div>
             
-            <div className="hidden md:flex gap-2">
-               <Link to="/login" className="text-xs font-bold text-gray-300 hover:text-white px-3 py-2">Đăng nhập</Link>
-               <Link to="/register" className="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20">Đăng ký</Link>
-            </div>
+            {/* 3. LOGIC HIỂN THỊ USER HOẶC LOGIN */}
+            {user ? (
+                <div className="relative">
+                    <button 
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="flex items-center gap-2 bg-[#252538] hover:bg-white/10 border border-white/5 rounded-full py-1 pr-3 pl-1 transition-all"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                            {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <span className="text-xs font-bold text-white max-w-[100px] truncate hidden sm:block">
+                            {user.full_name}
+                        </span>
+                        <RiArrowDownSLine className="text-gray-400" />
+                    </button>
 
+                    {/* Dropdown User */}
+                    {showUserMenu && (
+                        <div className="absolute right-0 mt-2 w-48 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl py-2 animate-fade-in-up z-50">
+                            <div className="px-4 py-2 border-b border-white/5 mb-1">
+                                <p className="text-white text-sm font-bold truncate">{user.full_name}</p>
+                                <p className="text-gray-500 text-xs truncate">@{user.username}</p>
+                            </div>
+                            <Link to="/lich-su" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors">
+                                <RiHistoryLine /> Lịch Sử Đọc
+                            </Link>
+                            <Link to="/theo-doi" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors">
+                                <RiHeart3Line /> Tủ Truyện
+                            </Link>
+                            <div className="border-t border-white/5 my-1"></div>
+                            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors text-left">
+                                <RiLogoutBoxRLine /> Đăng Xuất
+                            </button>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="hidden md:flex gap-2">
+                    <Link to="/login" className="text-xs font-bold text-gray-300 hover:text-white px-3 py-2">Đăng nhập</Link>
+                    <Link to="/register" className="bg-primary hover:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-lg shadow-primary/20">Đăng ký</Link>
+                </div>
+            )}
+
+            {/* MOBILE TOGGLE */}
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden text-white text-2xl p-1">
               {mobileMenuOpen ? <RiCloseLine /> : <RiMenu3Line />}
             </button>
@@ -97,11 +145,10 @@ const Header = () => {
         </div>
       </div>
 
-      {/* MOBILE MENU */}
+      {/* MOBILE MENU DRAWER */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#1a1a2e] border-t border-white/10 p-4 absolute w-full shadow-2xl z-50 h-screen overflow-y-auto pb-20">
            <div className="flex flex-col gap-2">
-              {/* 4. INPUT TÌM KIẾM (MOBILE) */}
               <div className="flex items-center bg-[#252538] rounded-lg px-3 py-2.5 mb-4 border border-white/5">
                  <RiSearchLine className="text-gray-400" />
                  <input 
@@ -115,7 +162,25 @@ const Header = () => {
               </div>
 
               <Link to="/" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5" onClick={() => setMobileMenuOpen(false)}>Trang Chủ</Link>
-              {/* ... Giữ nguyên các link khác ... */}
+              
+              {user ? (
+                  <>
+                    <Link to="/lich-su" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
+                        <RiHistoryLine className="text-primary"/> Lịch Sử Đọc
+                    </Link>
+                    <Link to="/theo-doi" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
+                        <RiHeart3Line className="text-primary"/> Truyện Theo Dõi
+                    </Link>
+                    <button onClick={handleLogout} className="text-red-400 font-bold p-3 rounded hover:bg-white/5 text-left flex items-center gap-2">
+                        <RiLogoutBoxRLine /> Đăng Xuất ({user.username})
+                    </button>
+                  </>
+              ) : (
+                  <div className="border-t border-white/10 pt-4 flex flex-col gap-3 mt-2">
+                     <Link to="/login" className="text-center text-gray-300 font-bold py-2 rounded border border-white/10">Đăng nhập</Link>
+                     <Link to="/register" className="text-center bg-primary text-white font-bold py-2 rounded shadow-lg shadow-primary/20">Đăng ký ngay</Link>
+                  </div>
+              )}
            </div>
         </div>
       )}

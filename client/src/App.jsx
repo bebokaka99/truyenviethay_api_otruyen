@@ -5,20 +5,25 @@ import ChapterPage from './pages/ChapterPage';
 import SearchPage from './pages/SearchPage';
 import CategoryPage from './pages/CategoryPage';
 import ListPage from './pages/ListPage';
-import RankingPage from './pages/RankingPage'; // Import mới
+import RankingPage from './pages/RankingPage';
+import LoginPage from './pages/LoginPage'; // Mới
+import RegisterPage from './pages/RegisterPage'; // Mới
 
 function App() {
   return (
     <Routes>
+       {/* ... các route cũ ... */}
        <Route path="/" element={<HomePage />} />
        <Route path="/truyen-tranh/:slug" element={<ComicDetailPage />} />
        <Route path="/doc-truyen/:slug/:chapterName" element={<ChapterPage />} />
        <Route path="/tim-kiem" element={<SearchPage />} />
        <Route path="/the-loai/:slug" element={<CategoryPage />} />
        <Route path="/danh-sach" element={<ListPage />} />
-       
-       {/* Route Xếp Hạng */}
        <Route path="/xep-hang" element={<RankingPage />} />
+
+       {/* Route Auth */}
+       <Route path="/login" element={<LoginPage />} />
+       <Route path="/register" element={<RegisterPage />} />
     </Routes>
   );
 }

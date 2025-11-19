@@ -1,17 +1,33 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Tạm thời để user là null (chưa đăng nhập)
-  // Bạn có thể đổi thành object user để test giao diện đã đăng nhập
-  const [user, setUser] = useState(null); 
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user_data');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
-  const logout = () => setUser(null);
+  const login = (userData, token) => {
+    // 1. Lưu vào State
+    setUser(userData);
+    // 2. Lưu vào LocalStorage (để F5 không mất)
+    localStorage.setItem('user_token', token);
+    localStorage.setItem('user_data', JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user_token');
+    localStorage.removeItem('user_data');
+    window.location.href = '/';
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
