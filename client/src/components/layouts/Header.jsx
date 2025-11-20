@@ -11,6 +11,8 @@ import {
   RiNotification3Line 
 } from 'react-icons/ri';
 
+const BACKEND_URL = 'http://192.168.1.154:5000';
+
 const Header = () => {
   const [categories, setCategories] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -27,14 +29,14 @@ const Header = () => {
   const getAvatarUrl = (avatarPath) => {
       if (!avatarPath) return null;
       if (avatarPath.startsWith('http')) return avatarPath;
-      return `http://localhost:5000/${avatarPath}`;
+      return `${BACKEND_URL}/${avatarPath}`;
   };
 
   const fetchNotifications = async () => {
       if (!user) return;
       try {
           const token = localStorage.getItem('user_token');
-          const res = await axios.get('http://localhost:5000/api/notifications', {
+          const res = await axios.get('/api/notifications', {
               headers: { Authorization: `Bearer ${token}` }
           });
           setNotifications(res.data.items);
@@ -46,7 +48,7 @@ const Header = () => {
 
   const handleReadNotify = async () => {
       if (unreadCount > 0) {
-          await axios.put('http://localhost:5000/api/notifications/read-all', {}, {
+          await axios.put('/api/notifications/read-all', {}, {
               headers: { Authorization: `Bearer ${localStorage.getItem('user_token')}` }
           });
           setUnreadCount(0); // Update UI ngay lập tức

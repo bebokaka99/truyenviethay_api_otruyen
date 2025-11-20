@@ -21,7 +21,7 @@ const HistoryPage = () => {
       try {
         const token = localStorage.getItem('user_token');
         // Gọi API lấy lịch sử
-        const response = await axios.get('http://localhost:5000/api/user/history', {
+        const response = await axios.get('/api/user/history', {
            headers: { Authorization: `Bearer ${token}` }
         });
         setComics(response.data);

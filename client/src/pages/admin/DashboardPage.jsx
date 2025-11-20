@@ -24,7 +24,7 @@ const DashboardPage = () => {
   const fetchUsers = async () => {
       try {
           const token = localStorage.getItem('user_token');
-          const res = await axios.get('http://localhost:5000/api/user/admin/users', {
+          const res = await axios.get('/api/user/admin/users', {
               headers: { Authorization: `Bearer ${token}` }
           });
           setUsers(res.data);
@@ -62,7 +62,7 @@ const DashboardPage = () => {
       if(!window.confirm('Bạn chắc chắn muốn XÓA vĩnh viễn user này?')) return;
       try {
           const token = localStorage.getItem('user_token');
-          await axios.delete(`http://localhost:5000/api/user/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+          await axios.delete(`/api/user/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
           setUsers(prev => prev.filter(u => u.id !== id));
           alert('Đã xóa!');
       } catch(e) { alert('Lỗi xóa'); }
@@ -71,7 +71,7 @@ const DashboardPage = () => {
   const handleWarn = async (id) => {
       try {
           const token = localStorage.getItem('user_token');
-          await axios.post(`http://localhost:5000/api/user/admin/users/${id}/warn`, {}, { headers: { Authorization: `Bearer ${token}` } });
+          await axios.post(`/api/user/admin/users/${id}/warn`, {}, { headers: { Authorization: `Bearer ${token}` } });
           alert('Đã gửi cảnh báo!');
           fetchUsers(); 
       } catch(e) { alert('Lỗi cảnh báo'); }
@@ -81,7 +81,7 @@ const DashboardPage = () => {
       if(!window.confirm('Mở khóa cho user này?')) return;
       try {
         const token = localStorage.getItem('user_token');
-        await axios.post(`http://localhost:5000/api/user/admin/users/${id}/unban`, {}, { headers: { Authorization: `Bearer ${token}` } });
+        await axios.post(`/api/user/admin/users/${id}/unban`, {}, { headers: { Authorization: `Bearer ${token}` } });
         alert('Đã mở khóa!');
         fetchUsers();
       } catch(e) { alert('Lỗi mở khóa'); }
@@ -96,7 +96,7 @@ const DashboardPage = () => {
       if (!selectedUser) return;
       try {
           const token = localStorage.getItem('user_token');
-          await axios.post(`http://localhost:5000/api/user/admin/users/${selectedUser.id}/ban`, 
+          await axios.post(`/api/user/admin/users/${selectedUser.id}/ban`, 
             { days: parseInt(banDays) }, 
             { headers: { Authorization: `Bearer ${token}` } }
           );

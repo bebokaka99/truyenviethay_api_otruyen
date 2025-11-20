@@ -25,7 +25,7 @@ const LibraryPage = () => {
 
       try {
         const token = localStorage.getItem('user_token');
-        const response = await axios.get('http://localhost:5000/api/user/library', {
+        const response = await axios.get('/api/user/library', {
            headers: { Authorization: `Bearer ${token}` }
         });
         setComics(response.data);
@@ -52,7 +52,7 @@ const LibraryPage = () => {
 
       try {
           const token = localStorage.getItem('user_token');
-          await axios.delete(`http://localhost:5000/api/user/library/${deleteTarget.comic_slug}`, {
+          await axios.delete(`/api/user/library/${deleteTarget.comic_slug}`, {
               headers: { Authorization: `Bearer ${token}` }
           });
           // Cập nhật UI

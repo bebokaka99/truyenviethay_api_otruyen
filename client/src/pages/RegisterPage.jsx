@@ -27,7 +27,7 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:5000/api/auth/register', formData);
+      await axios.post('/api/auth/register', formData);
       setShowSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại.');

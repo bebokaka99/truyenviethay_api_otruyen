@@ -11,6 +11,8 @@ import {
     RiTaskLine, RiMedalLine, RiGiftLine, RiCheckLine, RiLoader4Line
 } from 'react-icons/ri';
 
+const BACKEND_URL = 'http://192.168.1.154:5000';
+
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
   
@@ -47,7 +49,7 @@ const ProfilePage = () => {
           setRankStyle(user.rank_style || 'default'); 
           
           const avatarSrc = user.avatar 
-            ? (user.avatar.startsWith('http') ? user.avatar : `http://localhost:5000/${user.avatar}`)
+            ? (user.avatar.startsWith('http') ? user.avatar : `${BACKEND_URL}/${user.avatar}`)
             : `https://ui-avatars.com/api/?name=${user.username}&background=random`;
           setPreviewAvatar(avatarSrc);
       }
@@ -60,7 +62,7 @@ const ProfilePage = () => {
               setTaskLoading(true);
               try {
                   const token = localStorage.getItem('user_token');
-                  const res = await axios.get('http://localhost:5000/api/quests', {
+                  const res = await axios.get('/api/quests', {
                       headers: { Authorization: `Bearer ${token}` }
                   });
                   setTasks(res.data); 
@@ -97,7 +99,7 @@ const ProfilePage = () => {
       try {
           const token = localStorage.getItem('user_token');
           // PUT với header multipart/form-data
-          const res = await axios.put('http://localhost:5000/api/user/profile', formData, {
+          const res = await axios.put('/api/user/profile', formData, {
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
           });
           
@@ -115,7 +117,7 @@ const ProfilePage = () => {
   const handleClaim = async (task) => {
     try {
         const token = localStorage.getItem('user_token');
-        const res = await axios.post('http://localhost:5000/api/quests/claim', { quest_id: task.id }, {
+        const res = await axios.post('/api/quests/claim', { quest_id: task.id }, {
             headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -138,7 +140,7 @@ const ProfilePage = () => {
       setLoading(true); setMessage({ type: '', content: '' });
       try {
           const token = localStorage.getItem('user_token');
-          await axios.put('http://localhost:5000/api/user/password', {
+          await axios.put('/api/user/password', {
               currentPassword: passData.currentPassword, newPassword: passData.newPassword
           }, { headers: { Authorization: `Bearer ${token}` } });
           setMessage({ type: 'success', content: 'Đổi mật khẩu thành công!' });
