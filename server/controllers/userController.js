@@ -1,11 +1,10 @@
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
-// Bổ sung: Import hàm tạo thông báo (Cần thiết cho logic hoàn thành nhiệm vụ)
 const { createNotificationInternal } = require('./notificationController');
 
 // --- LIBRARY (TỦ TRUYỆN) ---
 
-// 1. Thêm/Cập nhật tủ truyện (Follow)
+// Thêm/Cập nhật tủ truyện (Follow)
 exports.addToLibrary = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug, comic_name, comic_image, latest_chapter } = req.body;
@@ -24,7 +23,7 @@ exports.addToLibrary = async (req, res) => {
     }
 };
 
-// 2. Bỏ theo dõi (Unfollow)
+//Bỏ theo dõi (Unfollow)
 exports.removeFromLibrary = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug } = req.params;
@@ -37,7 +36,7 @@ exports.removeFromLibrary = async (req, res) => {
     }
 };
 
-// 3. Lấy danh sách truyện đang theo dõi
+// Lấy danh sách truyện đang theo dõi
 exports.getLibrary = async (req, res) => {
     const userId = req.user.id;
     try {
@@ -48,7 +47,7 @@ exports.getLibrary = async (req, res) => {
     }
 };
 
-// 4. Check Follow Status
+// Check Follow Status
 exports.checkFollowStatus = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug } = req.params;
@@ -62,7 +61,7 @@ exports.checkFollowStatus = async (req, res) => {
 
 // --- HISTORY (LỊCH SỬ ĐỌC) ---
 
-// 5. Lưu lịch sử (FIX BUG: Progress is not stopping/claiming)
+// Lưu lịch sử (FIX BUG: Progress is not stopping/claiming)
 exports.saveHistory = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug, comic_name, comic_image, chapter_name } = req.body;
@@ -110,7 +109,7 @@ exports.saveHistory = async (req, res) => {
     }
 };
 
-// 6. Lấy danh sách lịch sử
+// Lấy danh sách lịch sử
 exports.getHistory = async (req, res) => {
     const userId = req.user.id;
     try {
@@ -121,7 +120,7 @@ exports.getHistory = async (req, res) => {
     }
 };
 
-// 7. Check Lịch Sử Cụ Thể (Để hiện nút Đọc Tiếp)
+// Check Lịch Sử Cụ Thể (Để hiện nút Đọc Tiếp)
 exports.checkReadingHistory = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug } = req.params;
@@ -142,7 +141,7 @@ exports.checkReadingHistory = async (req, res) => {
 
 // --- PROFILE (THÔNG TIN CÁ NHÂN) ---
 
-// 8. Cập nhật Profile (FIX BUG 1: Lưu Rank Style)
+// Cập nhật Profile 
 exports.updateProfile = async (req, res) => {
     const userId = req.user.id;
     // Lấy full_name, rank_style từ req.body
@@ -154,18 +153,15 @@ exports.updateProfile = async (req, res) => {
             avatarPath = req.file.path.replace(/\\/g, "/");
         }
 
-        // --- CÂU LỆNH SQL MỚI (UPDATE FULL) ---
         let sql = 'UPDATE users SET full_name = ?, rank_style = ?';
         let params = [full_name, rank_style, userId];
 
         if (avatarPath) {
             sql += ', avatar = ?';
-            params.splice(1, 0, avatarPath); // Chèn avatarPath vào vị trí thứ 2
+            params.splice(1, 0, avatarPath); 
         }
 
         sql += ' WHERE id = ?';
-
-        // FIX: Đảm bảo avatarPath được đưa vào đúng vị trí và userId là cuối cùng
 
         // Logic tối ưu hóa câu lệnh SQL:
         let updateFields = [];
@@ -196,7 +192,7 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// 9. Đổi mật khẩu
+// Đổi mật khẩu
 exports.changePassword = async (req, res) => {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
@@ -224,7 +220,7 @@ exports.changePassword = async (req, res) => {
 
 // --- ADMIN ---
 
-// 10. [ADMIN] Lấy danh sách tất cả người dùng
+// [ADMIN] Lấy danh sách tất cả người dùng
 exports.getAllUsers = async (req, res) => {
     try {
         const [rows] = await db.execute('SELECT id, username, email, full_name, role, status, warnings, ban_expires_at, created_at FROM users ORDER BY created_at DESC');
@@ -234,7 +230,7 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// 11. [ADMIN] Xóa người dùng
+// [ADMIN] Xóa người dùng
 exports.deleteUser = async (req, res) => {
     const { id } = req.params;
     try {
@@ -245,7 +241,7 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-// 12. [ADMIN] Cảnh báo người dùng
+// [ADMIN] Cảnh báo người dùng
 exports.warnUser = async (req, res) => {
     const { id } = req.params;
     try {
@@ -256,7 +252,7 @@ exports.warnUser = async (req, res) => {
     }
 };
 
-// 13. [ADMIN] Chặn người dùng (Ban)
+// [ADMIN] Chặn người dùng (Ban)
 exports.banUser = async (req, res) => {
     const { id } = req.params;
     const { days } = req.body;
@@ -285,7 +281,7 @@ exports.banUser = async (req, res) => {
     }
 };
 
-// 14. [ADMIN] Mở chặn (Unban)
+// [ADMIN] Mở chặn (Unban)
 exports.unbanUser = async (req, res) => {
     const { id } = req.params;
     try {

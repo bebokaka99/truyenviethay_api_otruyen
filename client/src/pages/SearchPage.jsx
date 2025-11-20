@@ -7,7 +7,7 @@ import { RiSearchLine, RiEmotionUnhappyLine, RiLoader4Line } from 'react-icons/r
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
-  const keyword = searchParams.get('keyword'); // Lấy từ khóa từ URL
+  const keyword = searchParams.get('keyword'); 
   
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);

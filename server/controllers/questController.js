@@ -8,8 +8,6 @@ const getLevelFromExp = (exp) => Math.floor(Math.sqrt(exp / 100)) || 1;
 exports.getQuests = async (req, res) => {
     const userId = req.user.id;
     try {
-        // JOIN bảng quests và user_quests
-        // Logic: Nếu ngày last_updated khác hôm nay -> coi như chưa làm (hoặc reset về 0)
         const [rows] = await db.execute(`
             SELECT q.*, 
                    COALESCE(uq.current_count, 0) as current_count, 
@@ -18,9 +16,6 @@ exports.getQuests = async (req, res) => {
             FROM quests q
             LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
         `, [userId]);
-
-        // Xử lý reset ngày ở phía client hiển thị hoặc update DB nếu cần thiết
-        // Ở đây ta trả về raw, client sẽ check ngày để hiển thị 0/1
         const today = new Date().toISOString().slice(0, 10);
         
         const processedQuests = rows.map(q => {
@@ -45,7 +40,7 @@ exports.claimReward = async (req, res) => {
     const { quest_id } = req.body;
 
     try {
-        // 1. Check điều kiện
+        // Check điều kiện
         const [quests] = await db.execute(
             `SELECT q.reward_exp, uq.current_count, q.target_count, uq.is_claimed, u.exp, u.full_name 
              FROM quests q
@@ -61,7 +56,7 @@ exports.claimReward = async (req, res) => {
         if (quest.is_claimed === 1) return res.status(400).json({ message: 'Đã nhận thưởng rồi.' }); // Check is_claimed là 1
         if (quest.current_count < quest.target_count) return res.status(400).json({ message: 'Chưa đạt mục tiêu.' });
 
-        // 2. Bắt đầu Transaction
+        // Bắt đầu Transaction
         await db.beginTransaction();
 
         // Cập nhật is_claimed = TRUE (1)

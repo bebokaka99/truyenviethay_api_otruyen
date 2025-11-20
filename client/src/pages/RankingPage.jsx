@@ -9,7 +9,7 @@ import {
 } from 'react-icons/ri';
 
 const RankingPage = () => {
-  const [activeTab, setActiveTab] = useState('daily'); // daily | weekly | monthly
+  const [activeTab, setActiveTab] = useState('daily'); 
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [domainAnh, setDomainAnh] = useState('');

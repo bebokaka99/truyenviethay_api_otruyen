@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { RiUser3Line, RiLockPasswordLine, RiArrowLeftSLine, RiMailLine, RiLoader4Line, RiAliensLine } from 'react-icons/ri';
-import SuccessModal from '../components/common/SuccessModal'; // Import Modal
+import SuccessModal from '../components/common/SuccessModal';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -28,7 +28,6 @@ const RegisterPage = () => {
 
     try {
       await axios.post('http://localhost:5000/api/auth/register', formData);
-      // Thay vì alert, ta bật Modal lên
       setShowSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng ký thất bại.');

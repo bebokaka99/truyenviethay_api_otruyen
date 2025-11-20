@@ -4,7 +4,7 @@ import axios from 'axios';
 import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
 import { useAuth } from '../contexts/AuthContext';
-import ConfirmModal from '../components/common/ConfirmModal'; // 1. Import Modal Mới
+import ConfirmModal from '../components/common/ConfirmModal';
 import { 
   RiHeart3Fill, RiDeleteBinLine, 
   RiEmotionUnhappyLine 
@@ -16,7 +16,7 @@ const LibraryPage = () => {
   const [loading, setLoading] = useState(true);
 
   // State cho Modal Xóa
-  const [deleteTarget, setDeleteTarget] = useState(null); // Lưu object truyện cần xóa
+  const [deleteTarget, setDeleteTarget] = useState(null); 
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -39,13 +39,13 @@ const LibraryPage = () => {
     fetchLibrary();
   }, [user]);
 
-  // 2. Hàm mở Modal (Thay vì confirm alert)
+  // Hàm mở Modal (Thay vì confirm alert)
   const openDeleteModal = (e, comic) => {
-      e.preventDefault(); // Chặn chuyển trang
-      setDeleteTarget(comic); // Lưu truyện đang chọn để xóa
+      e.preventDefault(); 
+      setDeleteTarget(comic); 
   };
 
-  // 3. Hàm thực thi xóa thật sự (Gắn vào nút Đồng Ý của Modal)
+  // Hàm thực thi xóa thật sự (Gắn vào nút Đồng Ý của Modal)
   const confirmDelete = async () => {
       if (!deleteTarget) return;
       setIsDeleting(true);
@@ -94,7 +94,7 @@ const LibraryPage = () => {
     <div className="min-h-screen w-full bg-[#101022] font-display text-gray-300 flex flex-col">
       <Header />
       
-      {/* 4. Gắn Component Modal vào đây */}
+      {/* Gắn Component Modal */}
       <ConfirmModal 
          isOpen={!!deleteTarget}
          onClose={() => setDeleteTarget(null)}
@@ -169,7 +169,7 @@ const LibraryPage = () => {
                             </h4>
                         </Link>
 
-                        {/* 5. Nút Xóa (Gọi hàm openDeleteModal) */}
+                        {/* Nút Xóa (Gọi hàm openDeleteModal) */}
                         <button 
                             onClick={(e) => openDeleteModal(e, item)}
                             className="absolute top-1 left-1 w-8 h-8 rounded-full bg-black/60 hover:bg-red-600 text-gray-300 hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg z-10 scale-90 group-hover:scale-100"

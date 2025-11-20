@@ -13,7 +13,7 @@ const ListPage = () => {
 
   // --- STATE DỮ LIỆU ---
   const [stories, setStories] = useState([]);
-  const [fullCategories, setFullCategories] = useState([]); // Để hiển thị dropdown lọc
+  const [fullCategories, setFullCategories] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [domainAnh, setDomainAnh] = useState('');
@@ -24,10 +24,10 @@ const ListPage = () => {
 
   // --- STATE BỘ LỌC ---
   const [showFilter, setShowFilter] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all'); // all | ongoing | completed
-  const [sortBy, setSortBy] = useState('default'); // default | name | new_update
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [sortBy, setSortBy] = useState('default');
 
-  // 1. Lấy danh sách tất cả thể loại (để làm bộ lọc chuyển hướng)
+  //Lấy danh sách tất cả thể loại (để làm bộ lọc chuyển hướng)
   useEffect(() => {
     const fetchAllCats = async () => {
         try {
@@ -38,7 +38,7 @@ const ListPage = () => {
     fetchAllCats();
   }, []);
 
-  // 2. Hàm gọi dữ liệu "Danh sách mới" (Hỗ trợ phân trang)
+  // Hàm gọi dữ liệu "Danh sách mới" (Hỗ trợ phân trang)
   const fetchStories = async (pageNum) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -92,12 +92,12 @@ const ListPage = () => {
   const filteredStories = useMemo(() => {
       let result = [...stories];
 
-      // 1. Lọc theo trạng thái
+      // Lọc theo trạng thái
       if (filterStatus !== 'all') {
           result = result.filter(s => s.status === filterStatus);
       }
 
-      // 2. Sắp xếp
+      // Sắp xếp
       if (sortBy === 'name') {
           result.sort((a, b) => a.name.localeCompare(b.name));
       } else if (sortBy === 'new_update') {
@@ -153,7 +153,7 @@ const ListPage = () => {
             <div className="mb-8 bg-[#151525] p-6 rounded-2xl border border-white/5 shadow-xl animate-fade-in-down">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     
-                    {/* 1. Trạng Thái */}
+                    {/* Trạng Thái */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-primary pl-2">Trạng Thái</h4>
                         <div className="flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ const ListPage = () => {
                         </div>
                     </div>
 
-                    {/* 2. Sắp Xếp */}
+                    {/* Sắp Xếp */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-green-500 pl-2">Sắp Xếp</h4>
                         <div className="flex flex-wrap gap-2">
@@ -193,7 +193,7 @@ const ListPage = () => {
                         </div>
                     </div>
 
-                    {/* 3. Lọc Theo Thể Loại (Chuyển hướng) */}
+                    {/* Lọc Theo Thể Loại (Chuyển hướng) */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-purple-500 pl-2">Lọc Theo Thể Loại</h4>
                         <div className="relative">

@@ -1,7 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-// Thêm import cho Notification (Cần thiết cho logic nhiệm vụ)
+// import hàm tạo thông báo 
 const { createNotificationInternal } = require('./notificationController'); 
 
 // Helper nội bộ để cập nhật tiến độ nhiệm vụ điểm danh
@@ -12,7 +12,6 @@ const updateDailyLoginQuest = async (userId) => {
         if (qRows.length === 0) return;
         const questId = qRows[0].id;
 
-        // Logic: Sử dụng INSERT OR UPDATE. is_claimed chỉ reset khi ngày khác nhau.
         await db.execute(`
             INSERT INTO user_quests (user_id, quest_id, current_count, is_claimed, last_updated)
             VALUES (?, ?, 1, 0, CURRENT_DATE())
@@ -22,7 +21,6 @@ const updateDailyLoginQuest = async (userId) => {
                 last_updated = CURRENT_DATE()
         `, [userId, questId]);
 
-        // KIỂM TRA: Chỉ tạo thông báo nếu user chưa claim
         const [progRows] = await db.execute("SELECT is_claimed FROM user_quests WHERE user_id = ? AND quest_id = ?", [userId, questId]);
         
         if (progRows.length > 0 && progRows[0].is_claimed === 0) {
@@ -62,12 +60,12 @@ exports.register = async (req, res) => {
     }
 };
 
-// --- ĐĂNG NHẬP (FIX: Kích hoạt Quest và trả về XP/Rank) ---
+// --- ĐĂNG NHẬP ---
 exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // 1. Tìm user theo email (Phải SELECT các cột XP, Rank Style)
+        // Tìm user theo email (Phải SELECT các cột XP, Rank Style)
         const [users] = await db.execute('SELECT id, username, email, full_name, avatar, role, exp, rank_style, password FROM users WHERE email = ?', [email]);
         
         if (users.length === 0) {
@@ -76,25 +74,25 @@ exports.login = async (req, res) => {
 
         const user = users[0];
 
-        // 2. Kiểm tra mật khẩu
+        // Kiểm tra mật khẩu
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Mật khẩu không đúng!' });
         }
         
-        // 3. [MỚI] Kích hoạt nhiệm vụ đăng nhập hàng ngày
+        // Kích hoạt nhiệm vụ đăng nhập hàng ngày
         if (user.role === 'user') {
             await updateDailyLoginQuest(user.id);
         }
 
-        // 4. Tạo token (JWT)
+        // Tạo token (JWT)
         const token = jwt.sign(
             { id: user.id, role: user.role }, 
             process.env.JWT_SECRET, 
             { expiresIn: '7d' }
         );
 
-        // 5. Trả về thông tin user
+        // Trả về thông tin user
         res.json({
             token,
             user: {
@@ -104,8 +102,8 @@ exports.login = async (req, res) => {
                 full_name: user.full_name,
                 avatar: user.avatar,
                 role: user.role,
-                exp: user.exp, // Gửi XP
-                rank_style: user.rank_style // Gửi Rank Style
+                exp: user.exp,
+                rank_style: user.rank_style 
             }
         });
 

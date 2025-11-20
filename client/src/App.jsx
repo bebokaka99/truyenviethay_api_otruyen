@@ -12,11 +12,11 @@ import LibraryPage from './pages/LibraryPage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/admin/DashboardPage';
-import AdminRoute from './components/auth/AdminRoute';   // Import bảo vệ route admin
+import AdminRoute from './components/auth/AdminRoute'; 
 function App() {
   return (
     <Routes>
-       {/* ... các route cũ ... */}
+       {/* ... các route*/}
        <Route path="/" element={<HomePage />} />
        <Route path="/truyen-tranh/:slug" element={<ComicDetailPage />} />
        <Route path="/doc-truyen/:slug/:chapterName" element={<ChapterPage />} />

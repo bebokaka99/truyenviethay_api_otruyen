@@ -46,9 +46,9 @@ const HomePage = () => {
             return Array.from(new Map(allItems.map(item => [item._id, item])).values());
         };
 
-        // 2. Gọi song song dữ liệu các phần (Tối ưu tốc độ)
+        //Gọi song song dữ liệu các phần (Tối ưu tốc độ)
         const [hotData, mangaData, manhwaData, manhuaData, ngonTinhData] = await Promise.all([
-            fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 3), // Lấy 3 trang truyện mới làm "Hot"
+            fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 3),
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manga', 2),
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhwa', 2),
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhua', 2),
@@ -84,24 +84,24 @@ const HomePage = () => {
       ) : (
         <main className="flex-1 pb-20">
           
-          {/* 1. HERO SECTION (BANNER LỚN) */}
+          {/* HERO SECTION (BANNER LỚN) */}
           <HeroSection />
 
-          {/* 2. SLIDER: TRUYỆN MỚI CẬP NHẬT */}
+          {/* SLIDER: TRUYỆN MỚI CẬP NHẬT */}
           <AutoSlideSection 
             title="Mới Cập Nhật" 
             stories={newUpdateStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 3. GRID: TRUYỆN HOT (Nhiều truyện nhất) */}
+          {/* GRID: TRUYỆN HOT (Nhiều truyện nhất) */}
           <HugeGridSection 
             title="Truyện Hot Mới" 
             stories={hotStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 4. GRID: MANHWA (Hàn Quốc) */}
+          {/* GRID: MANHWA (Hàn Quốc) */}
           <div className="bg-[#151525]">
             <HugeGridSection 
               title="Manhwa Cực Phẩm" 
@@ -110,14 +110,14 @@ const HomePage = () => {
             />
           </div>
 
-          {/* 5. GRID: MANHUA (Trung Quốc) */}
+          {/* GRID: MANHUA (Trung Quốc) */}
           <HugeGridSection 
             title="Manhua Chọn Lọc" 
             stories={manhuaStories} 
             domainAnh={domainAnh}
           />
 
-          {/* 6. GRID: MANGA (Nhật Bản) */}
+          {/* GRID: MANGA (Nhật Bản) */}
           <div className="bg-[#151525]">
             <HugeGridSection 
               title="Manga Kinh Điển" 
@@ -126,7 +126,7 @@ const HomePage = () => {
             />
           </div>
 
-          {/* 7. GRID: NGÔN TÌNH */}
+          {/* GRID: NGÔN TÌNH */}
           <HugeGridSection 
             title="Ngôn Tình Lãng Mạn" 
             stories={ngonTinhStories} 

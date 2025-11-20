@@ -80,7 +80,7 @@ const ProfilePage = () => {
       }
   };
 
-  // 1. Xử lý Update Profile (Gửi file và rank_style)
+  // Xử lý Update Profile (Gửi file và rank_style)
   const handleUpdateInfo = async (e) => {
       e.preventDefault();
       setLoading(true); setMessage({ type: '', content: '' });
@@ -111,7 +111,7 @@ const ProfilePage = () => {
       } finally { setLoading(false); }
   };
   
-  // 2. Xử lý Claim Reward
+  // Xử lý Claim Reward
   const handleClaim = async (task) => {
     try {
         const token = localStorage.getItem('user_token');
