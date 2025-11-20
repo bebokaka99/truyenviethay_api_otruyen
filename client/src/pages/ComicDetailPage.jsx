@@ -25,13 +25,13 @@ const ComicDetailPage = () => {
 
     // State cho Follow & History
     const [isFollowed, setIsFollowed] = useState(false);
-    const [lastReadChapter, setLastReadChapter] = useState(null); // Lưu chương đọc dở
+    const [lastReadChapter, setLastReadChapter] = useState(null); 
     const [followLoading, setFollowLoading] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [latestChapterApi, setLatestChapterApi] = useState('Mới');
 
     useEffect(() => {
-        // 1. Lấy chi tiết truyện
+        // Lấy chi tiết truyện
         const fetchComicDetail = async () => {
             try {
                 const response = await axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${slug}`);
@@ -51,7 +51,7 @@ const ComicDetailPage = () => {
             } catch (error) { console.error(error); setLoading(false); }
         };
 
-        // 2. Lấy gợi ý ngẫu nhiên
+        // Lấy gợi ý ngẫu nhiên
         const fetchRandomSuggestions = async () => {
             try {
                 const randomPage = Math.floor(Math.random() * 50) + 1;
@@ -69,7 +69,7 @@ const ComicDetailPage = () => {
         window.scrollTo(0, 0);
     }, [slug]);
 
-    // 3. Kiểm tra Follow & Lịch sử đọc (Khi có User)
+    // Kiểm tra Follow & Lịch sử đọc (Khi có User)
     useEffect(() => {
         if (user && comic) {
             const checkUserStatus = async () => {
@@ -77,11 +77,11 @@ const ComicDetailPage = () => {
                     const token = localStorage.getItem('user_token');
                     const headers = { Authorization: `Bearer ${token}` };
 
-                    // 1. Check Follow (Code cũ)
+                    // Check Follow (Code cũ)
                     const resFollow = await axios.get(`http://localhost:5000/api/user/library/check/${slug}`, { headers });
                     setIsFollowed(resFollow.data.isFollowed);
 
-                    // 2. Check History (CODE MỚI - Để lấy chương đọc dở)
+                    // Check History (CODE MỚI - Để lấy chương đọc dở)
                     const resHistory = await axios.get(`http://localhost:5000/api/user/history/check/${slug}`, { headers });
                     if (resHistory.data.chapter_name) {
                         setLastReadChapter(resHistory.data.chapter_name);
@@ -108,12 +108,11 @@ const ComicDetailPage = () => {
                 await axios.delete(`http://localhost:5000/api/user/library/${slug}`, { headers });
                 setIsFollowed(false);
             } else {
-                // FIX QUAN TRỌNG: Gửi latestChapterApi (Đúng) thay vì chapters[0] (Sai)
                 await axios.post('http://localhost:5000/api/user/library', {
                     comic_slug: slug,
                     comic_name: comic.name,
                     comic_image: `${domainAnh}/uploads/comics/${comic.thumb_url}`,
-                    latest_chapter: latestChapterApi // <--- Dùng biến state mới này
+                    latest_chapter: latestChapterApi 
                 }, { headers });
                 setIsFollowed(true);
             }

@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext'; 
+import LevelBadge from '../common/LevelBadge'; 
 import { 
   RiSearchLine, RiMenu3Line, RiCloseLine, 
   RiHistoryLine, RiHeart3Line,
-  RiLogoutBoxRLine, RiArrowDownSLine, RiUserSettingsLine
+  RiLogoutBoxRLine, RiArrowDownSLine, 
+  RiUserSettingsLine, RiAdminLine,
+  RiNotification3Line 
 } from 'react-icons/ri';
 
 const Header = () => {
@@ -16,23 +19,56 @@ const Header = () => {
   const { user, logout } = useAuth(); 
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  // STATE thông báo
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // --- LOGIC AVATAR ---
   const getAvatarUrl = (avatarPath) => {
       if (!avatarPath) return null;
-      if (avatarPath.startsWith('http')) return avatarPath; // Link online
-      return `http://localhost:5000/${avatarPath}`; // Link local server
+      if (avatarPath.startsWith('http')) return avatarPath;
+      return `http://localhost:5000/${avatarPath}`;
   };
 
-  useEffect(() => {
-    const fetchCategories = async () => {
+  const fetchNotifications = async () => {
+      if (!user) return;
       try {
-        const response = await axios.get('https://otruyenapi.com/v1/api/the-loai');
-        setCategories(response.data.data.items);
-      } catch (error) { console.error(error); }
+          const token = localStorage.getItem('user_token');
+          const res = await axios.get('http://localhost:5000/api/notifications', {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          setNotifications(res.data.items);
+          setUnreadCount(res.data.unread);
+      } catch (e) {
+          console.error("Lỗi fetch notif:", e);
+      }
+  };
+
+  const handleReadNotify = async () => {
+      if (unreadCount > 0) {
+          await axios.put('http://localhost:5000/api/notifications/read-all', {}, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('user_token')}` }
+          });
+          setUnreadCount(0); // Update UI ngay lập tức
+      }
+  }
+
+  useEffect(() => {
+    // Fetch danh mục và thông báo khi component mount
+    const fetchInitialData = async () => {
+        try {
+            const [catRes] = await Promise.all([
+                axios.get('https://otruyenapi.com/v1/api/the-loai'),
+            ]);
+            setCategories(catRes.data.data.items);
+        } catch (error) { console.error(error); }
     };
-    fetchCategories();
-  }, []);
+    fetchInitialData();
+    // Fetch thông báo nếu user đã đăng nhập
+    if (user) {
+        fetchNotifications();
+    }
+  }, [user]);
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' && keyword.trim()) {
@@ -92,53 +128,93 @@ const Header = () => {
             
             {/* USER MENU */}
             {user ? (
-                <div className="relative">
-                    <button 
-                        onClick={() => setShowUserMenu(!showUserMenu)}
-                        className="flex items-center gap-2 bg-[#252538] hover:bg-white/10 border border-white/5 rounded-full py-1 pr-3 pl-1 transition-all"
-                    >
-                        {/* AVATAR */}
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 border border-white/10">
-                            {user.avatar ? (
-                                <img src={getAvatarUrl(user.avatar)} alt="Avt" className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center font-bold text-white bg-gradient-to-tr from-primary to-purple-600">
-                                    {user.full_name?.charAt(0).toUpperCase()}
-                                </div>
+                <div className="flex items-center gap-4">
+                    
+                    {/* --- NÚT THÔNG BÁO --- */}
+                    <div className="relative group" onMouseEnter={handleReadNotify}>
+                        <button className="w-9 h-9 rounded-full bg-[#252538] hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors border border-white/5 relative">
+                            <RiNotification3Line size={18} />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1a1a2e]"></span>
                             )}
-                        </div>
+                        </button>
                         
-                        <span className="text-xs font-bold text-white max-w-[100px] truncate hidden sm:block">
-                            {user.full_name}
-                        </span>
-                        <RiArrowDownSLine className="text-gray-400" />
-                    </button>
+                        {/* Dropdown Thông Báo */}
+                        <div className="absolute right-0 mt-2 w-80 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl p-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                            <div className="p-3 border-b border-white/5 flex justify-between items-center bg-white/5">
+                                <h4 className="text-white font-bold text-sm">Thông Báo</h4>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                {notifications.length > 0 ? notifications.map(notif => (
+                                    <div key={notif.id} className={`p-3 border-b border-white/5 transition-colors ${notif.is_read ? 'opacity-60' : 'bg-white/5'}`}>
+                                        <p className="text-xs text-gray-200 font-bold mb-1">{notif.title}</p>
+                                        <p className="text-xs text-gray-400 line-clamp-2">{notif.message}</p>
+                                        <span className="text-[9px] text-gray-600 mt-1 block">{new Date(notif.created_at).toLocaleString()}</span>
+                                    </div>
+                                )) : (
+                                    <p className="text-center text-gray-500 text-xs p-4">Chưa có thông báo nào.</p>
+                                )}
+                            </div>
+                            <Link to="/thong-bao" className="block text-center text-xs text-gray-400 hover:text-white py-2 bg-white/5 hover:bg-white/10 transition-colors">
+                                Xem tất cả
+                            </Link>
+                        </div>
+                    </div>
 
-                    {showUserMenu && (
-                        <div className="absolute right-0 mt-2 w-56 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl py-2 animate-fade-in-up z-50">
-                            <div className="px-4 py-3 border-b border-white/5 mb-1 bg-white/5">
-                                <p className="text-white text-sm font-bold truncate">{user.full_name}</p>
-                                <p className="text-gray-500 text-xs truncate">@{user.username}</p>
+                    {/* USER DROPDOWN */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className="flex items-center gap-2 bg-[#252538] hover:bg-white/10 border border-white/5 rounded-full py-1 pr-3 pl-1 transition-all"
+                        >
+                            {/* AVATAR */}
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-700 border border-white/10">
+                                {user.avatar ? (
+                                    <img src={getAvatarUrl(user.avatar)} alt="Avt" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center font-bold text-white bg-gradient-to-tr from-primary to-purple-600">
+                                        {user.full_name?.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                             </div>
                             
-                            {/* LINK PROFILE MỚI */}
-                            <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
-                                <RiUserSettingsLine size={18} /> Thông Tin Cá Nhân
-                            </Link>
+                            <div className="hidden sm:block">
+                                <LevelBadge exp={user.exp} rankStyle={user.rank_style} />
+                            </div>
+                            <RiArrowDownSLine className="text-gray-400" />
+                        </button>
 
-                            <Link to="/lich-su" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
-                                <RiHistoryLine size={18} /> Lịch Sử Đọc
-                            </Link>
-                            <Link to="/theo-doi" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
-                                <RiHeart3Line size={18} /> Tủ Truyện
-                            </Link>
-                            
-                            <div className="border-t border-white/5 my-1"></div>
-                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors text-left font-bold">
-                                <RiLogoutBoxRLine size={18} /> Đăng Xuất
-                            </button>
-                        </div>
-                    )}
+                        {showUserMenu && (
+                            <div className="absolute right-0 mt-2 w-56 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-2xl py-2 animate-fade-in-up z-50">
+                                <div className="px-4 py-3 border-b border-white/5 mb-1 bg-white/5">
+                                    <p className="text-white text-sm font-bold truncate">{user.full_name}</p>
+                                    <p className="text-gray-500 text-xs truncate">@{user.username}</p>
+                                </div>
+                                
+                                {user.role === 'admin' && (
+                                    <Link to="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-white/5 hover:text-red-400 transition-colors font-bold border-b border-white/5">
+                                        <RiAdminLine size={18} /> Quản Trị Viên
+                                    </Link>
+                                )}
+
+                                <Link to="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                    <RiUserSettingsLine size={18} /> Thông Tin Cá Nhân
+                                </Link>
+
+                                <Link to="/lich-su" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                    <RiHistoryLine size={18} /> Lịch Sử Đọc
+                                </Link>
+                                <Link to="/theo-doi" className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-primary transition-colors font-medium">
+                                    <RiHeart3Line size={18} /> Tủ Truyện
+                                </Link>
+                                
+                                <div className="border-t border-white/5 my-1"></div>
+                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors text-left font-bold">
+                                    <RiLogoutBoxRLine size={18} /> Đăng Xuất
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <div className="hidden md:flex gap-2">
@@ -172,6 +248,17 @@ const Header = () => {
               <Link to="/" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5" onClick={() => setMobileMenuOpen(false)}>Trang Chủ</Link>
               {user ? (
                   <>
+                    {user.role === 'admin' && (
+                        <Link to="/admin" className="text-red-500 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
+                            <RiAdminLine /> Quản Trị Viên
+                        </Link>
+                    )}
+                    
+                    <div className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-2"><RiNotification3Line className="text-primary"/> Thông Báo</span>
+                        {unreadCount > 0 && (<span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{unreadCount}</span>)}
+                    </div>
+                    
                     <Link to="/profile" className="text-gray-300 font-bold p-3 rounded hover:bg-white/5 flex items-center gap-2">
                         <RiUserSettingsLine className="text-primary"/> Thông Tin Cá Nhân
                     </Link>

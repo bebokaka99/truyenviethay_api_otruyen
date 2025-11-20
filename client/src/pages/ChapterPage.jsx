@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext'; // Import AuthContext
+import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
-import LoginModal from '../components/common/LoginModal'; // Import LoginModal
+import LoginModal from '../components/common/LoginModal'; 
 import {
     RiArrowLeftSLine, RiArrowRightSLine, RiListCheck,
     RiErrorWarningLine, RiHome4Line, RiHeart3Line, RiHeart3Fill,
@@ -14,12 +14,12 @@ import {
 const ChapterPage = () => {
     const { slug, chapterName } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth(); // Lấy user
+    const { user } = useAuth(); 
 
     const [images, setImages] = useState([]);
     const [chapterList, setChapterList] = useState([]);
     const [comicName, setComicName] = useState('');
-    const [comicThumb, setComicThumb] = useState(''); // Lưu thumb để add follow
+    const [comicThumb, setComicThumb] = useState(''); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -42,13 +42,13 @@ const ChapterPage = () => {
             setImages([]);
 
             try {
-                // 1. Lấy chi tiết truyện (để lấy list chương và thumb)
+                // Lấy chi tiết truyện (để lấy list chương và thumb)
                 const detailRes = await axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${slug}`);
                 const comicItem = detailRes.data.data.item;
                 setComicName(comicItem.name);
                 setComicThumb(detailRes.data.data.APP_DOMAIN_CDN_IMAGE + '/uploads/comics/' + comicItem.thumb_url);
                 
-                // 2. Sắp xếp chương (Cao -> Thấp)
+                // Sắp xếp chương (Cao -> Thấp)
                 let list = comicItem.chapters[0]?.server_data || [];
                 list.sort((a, b) => {
                     const numA = parseFloat(a.chapter_name);
@@ -68,7 +68,7 @@ const ChapterPage = () => {
                 setNextChapter(nextIndex >= 0 ? list[nextIndex].chapter_name : null);
                 setPrevChapter(prevIndex < list.length ? list[prevIndex].chapter_name : null);
 
-                // 3. Lấy ảnh chương
+                // Lấy ảnh chương
                 const chapterApiUrl = list[currentIndex].chapter_api_data;
                 const imageRes = await axios.get(chapterApiUrl);
                 const imgData = imageRes.data.data;
@@ -83,7 +83,7 @@ const ChapterPage = () => {
                 setImages(fullImages);
                 setLoading(false);
 
-                // 4. Tự động lưu lịch sử (Nếu đã login)
+                // Tự động lưu lịch sử (Nếu đã login)
                 const token = localStorage.getItem('user_token');
                 if (token) {
                     axios.post('http://localhost:5000/api/user/history', {

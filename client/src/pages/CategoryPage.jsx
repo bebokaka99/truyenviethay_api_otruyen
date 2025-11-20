@@ -12,24 +12,24 @@ const CategoryPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
 
-  // --- STATE DỮ LIỆU ---
+  // State dữ liệu
   const [stories, setStories] = useState([]);
-  const [fullCategories, setFullCategories] = useState([]); // Danh sách tất cả thể loại để lọc
+  const [fullCategories, setFullCategories] = useState([]); 
   const [categoryInfo, setCategoryInfo] = useState({ name: '', total: 0 });
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [domainAnh, setDomainAnh] = useState('');
   
-  // --- STATE PHÂN TRANG ---
+  // state phân trang
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // --- STATE BỘ LỌC ---
+  // state bộ lọc
   const [showFilter, setShowFilter] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all'); // all | ongoing | completed
-  const [sortBy, setSortBy] = useState('default'); // default | name | new_update
+  const [filterStatus, setFilterStatus] = useState('all'); 
+  const [sortBy, setSortBy] = useState('default'); 
 
-  // 1. Lấy danh sách tất cả thể loại (để hiển thị trong bộ lọc)
+  // Lấy danh sách tất cả thể loại (để hiển thị trong bộ lọc)
   useEffect(() => {
     const fetchAllCats = async () => {
         try {
@@ -40,7 +40,7 @@ const CategoryPage = () => {
     fetchAllCats();
   }, []);
 
-  // 2. Hàm gọi dữ liệu truyện (Hỗ trợ phân trang)
+  // Hàm gọi dữ liệu truyện (Hỗ trợ phân trang)
   const fetchStories = async (pageNum, isNewSlug = false) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -98,21 +98,20 @@ const CategoryPage = () => {
       fetchStories(nextPage);
   };
 
-  // --- LOGIC LỌC & SẮP XẾP CLIENT-SIDE ---
-  // Do API không hỗ trợ query params filter, ta lọc trên danh sách đã tải
+  // logic lọc & sắp xếp client-side
   const filteredStories = useMemo(() => {
       let result = [...stories];
 
-      // 1. Lọc theo trạng thái
+      // Lọc theo trạng thái
       if (filterStatus !== 'all') {
           result = result.filter(s => s.status === filterStatus);
       }
 
-      // 2. Sắp xếp
+      // Sắp xếp
       if (sortBy === 'name') {
           result.sort((a, b) => a.name.localeCompare(b.name));
       } else if (sortBy === 'new_update') {
-          // API mặc định thường đã là mới cập nhật, nhưng ta sort lại cho chắc nếu cần
+          // API mặc định thường đã là mới cập nhật, nhưng sort lại cho chắc nếu cần
           result.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
       }
 

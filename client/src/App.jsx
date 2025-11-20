@@ -11,7 +11,8 @@ import RegisterPage from './pages/RegisterPage';
 import LibraryPage from './pages/LibraryPage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
-
+import DashboardPage from './pages/admin/DashboardPage';
+import AdminRoute from './components/auth/AdminRoute';   // Import bảo vệ route admin
 function App() {
   return (
     <Routes>
@@ -30,6 +31,11 @@ function App() {
        <Route path="/theo-doi" element={<LibraryPage />} />
        <Route path="/lich-su" element={<HistoryPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* --- ADMIN ROUTES (Được bảo vệ) --- */}
+       <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<DashboardPage />} />
+       </Route>
     </Routes>
   );
 }

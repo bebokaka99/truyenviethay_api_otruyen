@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/layouts/Header';
-import Footer from '../components/layouts/Footer'; // Nhớ import Footer
-import HeroSection from '../components/home/HeroSection'; // Import HeroSection
+import Footer from '../components/layouts/Footer';
+import HeroSection from '../components/home/HeroSection'; 
 import AutoSlideSection from '../components/home/AutoSlideSection';
 import HugeGridSection from '../components/home/HugeGridSection';
 
 const HomePage = () => {
   // --- STATE ---
-  const [newUpdateStories, setNewUpdateStories] = useState([]); // Slider
-  const [hotStories, setHotStories] = useState([]); // Grid Hot
+  const [newUpdateStories, setNewUpdateStories] = useState([]);
+  const [hotStories, setHotStories] = useState([]); 
   
   // Các thể loại phổ biến
   const [mangaStories, setMangaStories] = useState([]);
@@ -23,13 +23,13 @@ const HomePage = () => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // 1. Lấy cấu hình chung & Slider (API Home)
+        // Lấy cấu hình chung & Slider (API Home)
         const homeRes = await axios.get('https://otruyenapi.com/v1/api/home');
         const domain = homeRes.data.data.APP_DOMAIN_CDN_IMAGE;
         setDomainAnh(domain);
         setNewUpdateStories(homeRes.data.data.items);
 
-        // --- HÀM HELPER GỌI NHIỀU TRANG ---
+        // --- Hàm helper gọi nhiều trang ---
         const fetchMultiPage = async (urlInfo, pageLimit) => {
             const promises = [];
             for (let i = 1; i <= pageLimit; i++) {
