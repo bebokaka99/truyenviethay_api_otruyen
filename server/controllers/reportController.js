@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// 1. Gửi báo cáo (User)
+// 1. Gửi báo cáo (User gửi)
 exports.createReport = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug, chapter_name, reason } = req.body;
@@ -20,7 +20,6 @@ exports.createReport = async (req, res) => {
 // 2. [ADMIN] Lấy tất cả báo cáo
 exports.getAllReports = async (req, res) => {
     try {
-        // Join với user để biết ai báo cáo
         const [rows] = await db.execute(`
             SELECT r.*, u.username, u.full_name 
             FROM reports r 

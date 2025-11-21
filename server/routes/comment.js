@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
-const { getComments, addComment, toggleLike,
+const adminMiddleware = require('../middleware/adminMiddleware');
+const { getComments, addComment, toggleLike, 
     getAllCommentsAdmin, deleteCommentAdmin } = require('../controllers/commentController');
 
 // GET: Lấy bình luận (Thêm param userId để check like status)

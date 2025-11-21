@@ -2,83 +2,109 @@ const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { createNotificationInternal } = require('./notificationController');
 
-// --- HELPER: CẬP NHẬT TIẾN ĐỘ NHIỆM VỤ ---
-const updateQuestProgress = async (userId, questKey, type) => {
+// ============================================================
+// HELPER: CẬP NHẬT TIẾN ĐỘ NHIỆM VỤ (Dùng chung cho cả hệ thống)
+// ============================================================
+const updateQuestProgress = async (userId, actionType, incrementAmount = 1) => {
     try {
-        const [qRows] = await db.execute("SELECT id, target_count FROM quests WHERE quest_key = ?", [questKey]);
-        if (qRows.length === 0) return;
+        // 1. Tìm tất cả nhiệm vụ khớp với hành động (VD: 'read', 'comment', 'login')
+        const [quests] = await db.execute("SELECT * FROM quests WHERE action_type = ?", [actionType]);
         
-        const questId = qRows[0].id;
-        const target = qRows[0].target_count;
-
-        // Kiểm tra bản ghi hiện tại
-        const [existing] = await db.execute(
-            `SELECT id, current_count, is_claimed, last_updated,
-                    DATEDIFF(CURRENT_DATE(), last_updated) as days_diff,
-                    YEARWEEK(CURRENT_DATE(), 1) - YEARWEEK(last_updated, 1) as weeks_diff
-             FROM user_quests WHERE user_id = ? AND quest_id = ?`, 
-            [userId, questId]
-        );
+        if (quests.length === 0) return;
 
         const today = new Date().toISOString().slice(0, 10);
-        let newCount = 0;
-        let newClaimed = 0;
-        let needUpdate = false;
-        let isFirstComplete = false;
 
-        if (existing.length === 0) {
-            // Chưa có -> Tạo mới = 1
-            await db.execute(
-                "INSERT INTO user_quests (user_id, quest_id, current_count, is_claimed, last_updated) VALUES (?, ?, 1, 0, ?)",
-                [userId, questId, today]
+        // 2. Duyệt qua từng nhiệm vụ tìm được để cập nhật
+        for (const quest of quests) {
+            // Lấy trạng thái hiện tại của user đối với nhiệm vụ này
+            const [existing] = await db.execute(
+                `SELECT id, current_count, is_claimed, 
+                        DATEDIFF(CURRENT_DATE(), last_updated) as days_diff,
+                        YEARWEEK(CURRENT_DATE(), 1) - YEARWEEK(last_updated, 1) as weeks_diff
+                 FROM user_quests WHERE user_id = ? AND quest_id = ?`, 
+                [userId, quest.id]
             );
-            if (target === 1) isFirstComplete = true;
-        } else {
-            const record = existing[0];
-            let shouldReset = false;
 
-            // Logic Reset
-            if (type === 'daily' && record.days_diff !== 0) shouldReset = true;
-            else if (type === 'weekly' && record.weeks_diff !== 0) shouldReset = true;
-            // achievement: Không bao giờ reset
+            let newCount = 0;
+            let newClaimed = 0;
+            let needUpdate = false;
+            let isFirstComplete = false;
 
-            if (shouldReset) {
-                newCount = 1;
-                newClaimed = 0;
-                needUpdate = true;
-                if (target === 1) isFirstComplete = true;
-            } else {
-                // Cùng chu kỳ -> Tăng nếu chưa max (hoặc achievement thì cứ tăng đến max)
-                newCount = record.current_count;
-                newClaimed = record.is_claimed;
+            if (existing.length === 0) {
+                // Chưa làm bao giờ -> Tạo mới
+                newCount = incrementAmount;
+                if (newCount >= quest.target_count) isFirstComplete = true;
                 
-                if (newCount < target) {
-                    newCount++;
+                await db.execute(
+                    "INSERT INTO user_quests (user_id, quest_id, current_count, is_claimed, last_updated) VALUES (?, ?, ?, 0, CURRENT_DATE())",
+                    [userId, quest.id, newCount]
+                );
+            } else {
+                const record = existing[0];
+                let shouldReset = false;
+
+                // Logic Reset dựa trên loại nhiệm vụ
+                if (quest.type === 'daily' && record.days_diff !== 0) {
+                    shouldReset = true; // Khác ngày -> Reset
+                } else if (quest.type === 'weekly' && record.weeks_diff !== 0) {
+                    shouldReset = true; // Khác tuần -> Reset
+                }
+                // achievement: Không bao giờ reset
+                
+                if (shouldReset) {
+                    newCount = incrementAmount; 
+                    newClaimed = 0;
                     needUpdate = true;
-                    if (newCount === target && newClaimed === 0) {
-                        isFirstTimeComplete = true;
+                    // Nếu reset mà đạt ngay target (ví dụ target=1)
+                    if (newCount >= quest.target_count) isFirstComplete = true;
+                } else {
+                    // Cùng chu kỳ -> Cộng dồn
+                    newCount = record.current_count;
+                    newClaimed = record.is_claimed;
+                    
+                    // Chỉ tăng nếu chưa max hoặc là achievement (tích lũy)
+                    if (newCount < quest.target_count || quest.type === 'achievement') {
+                        newCount += incrementAmount;
+                        needUpdate = true;
+                        
+                        // Check nếu vừa cán mốc target và chưa nhận thưởng
+                        if (newCount >= quest.target_count && record.current_count < quest.target_count && newClaimed === 0) {
+                            isFirstTimeComplete = true;
+                        }
                     }
+                }
+
+                if (needUpdate) {
+                    await db.execute(
+                        "UPDATE user_quests SET current_count = ?, is_claimed = ?, last_updated = CURRENT_DATE() WHERE id = ?",
+                        [newCount, newClaimed, record.id]
+                    );
                 }
             }
 
-            if (needUpdate) {
-                await db.execute(
-                    "UPDATE user_quests SET current_count = ?, is_claimed = ?, last_updated = ? WHERE id = ?",
-                    [newCount, newClaimed, today, record.id]
+            // 3. Bắn thông báo nếu hoàn thành
+            if (isFirstComplete) {
+                 await createNotificationInternal(
+                    userId, 
+                    'quest', 
+                    'Nhiệm vụ hoàn thành!', 
+                    `Bạn đã hoàn thành: ${quest.name}. Hãy vào trang hồ sơ nhận thưởng!`, 
+                    '/profile?tab=tasks'
                 );
             }
         }
-
-        // Notify
-        if (isFirstTimeComplete) {
-             await createNotificationInternal(userId, 'quest', 'Nhiệm vụ hoàn thành!', `Bạn đã hoàn thành: ${questKey}. Nhận thưởng ngay!`, '/profile?tab=tasks');
-        }
     } catch (error) {
-        console.error("Lỗi updateQuestProgress:", error);
+        console.error(`Lỗi updateQuestProgress (${actionType}):`, error);
     }
 };
 
-// --- LIBRARY (TỦ TRUYỆN) ---
+// Export helper để AuthController và CommentController sử dụng
+exports.updateQuestProgress = updateQuestProgress;
+
+
+// ============================================================
+// LIBRARY (TỦ TRUYỆN)
+// ============================================================
 
 exports.addToLibrary = async (req, res) => {
     const userId = req.user.id;
@@ -120,13 +146,16 @@ exports.checkFollowStatus = async (req, res) => {
     } catch (error) { res.status(500).json({ message: 'Lỗi server' }); }
 };
 
-// --- HISTORY (LỊCH SỬ ĐỌC) ---
+
+// ============================================================
+// HISTORY (LỊCH SỬ & NHIỆM VỤ ĐỌC)
+// ============================================================
 
 exports.saveHistory = async (req, res) => {
     const userId = req.user.id;
     const { comic_slug, comic_name, comic_image, chapter_name } = req.body;
     try {
-        // 1. Lưu lịch sử đọc
+        // 1. Lưu lịch sử đọc vào DB
         await db.execute(
             `INSERT INTO reading_history (user_id, comic_slug, comic_name, comic_image, chapter_name, read_at) 
              VALUES (?, ?, ?, ?, ?, NOW()) 
@@ -134,14 +163,10 @@ exports.saveHistory = async (req, res) => {
             [userId, comic_slug, comic_name, comic_image, chapter_name]
         );
 
-        // 2. Cập nhật các nhiệm vụ liên quan
-        // Không dùng await Promise.all để tránh block request chính, chạy ngầm
-        Promise.all([
-            updateQuestProgress(userId, 'daily_read', 'daily'),
-            updateQuestProgress(userId, 'weekly_read', 'weekly'),
-            updateQuestProgress(userId, 'achieve_read_100', 'achievement'),
-            updateQuestProgress(userId, 'achieve_read_1000', 'achievement')
-        ]).catch(e => console.error("Lỗi update quest:", e));
+        // 2. Cập nhật Nhiệm vụ Đọc
+        // Gọi helper với action_type = 'read', hệ thống sẽ tự tìm các quest như daily_read, weekly_read...
+        // Không dùng await để tránh block phản hồi về client
+        updateQuestProgress(userId, 'read', 1).catch(err => console.error("Quest Update Error:", err));
         
         res.status(200).json({ message: 'Đã lưu lịch sử' });
     } catch (error) {
@@ -168,21 +193,36 @@ exports.checkReadingHistory = async (req, res) => {
     } catch (error) { res.status(500).json({ message: 'Lỗi server' }); }
 };
 
-// --- PROFILE (THÔNG TIN CÁ NHÂN) ---
+
+// ============================================================
+// PROFILE (THÔNG TIN CÁ NHÂN)
+// ============================================================
 
 exports.updateProfile = async (req, res) => {
     const userId = req.user.id;
     const { full_name, rank_style } = req.body;
     try {
         let avatarPath = req.file ? req.file.path.replace(/\\/g, "/") : null;
+        
         let sql = 'UPDATE users SET full_name = ?, rank_style = ?';
         let params = [full_name, rank_style];
-        if (avatarPath) { sql += ', avatar = ?'; params.push(avatarPath); }
-        sql += ' WHERE id = ?'; params.push(userId);
+        
+        if (avatarPath) { 
+            sql += ', avatar = ?'; 
+            params.push(avatarPath); 
+        }
+        
+        sql += ' WHERE id = ?';
+        params.push(userId);
+        
         await db.execute(sql, params);
+        
         const [users] = await db.execute('SELECT id, username, email, full_name, avatar, role, exp, rank_style FROM users WHERE id = ?', [userId]);
         res.json({ message: 'Cập nhật thành công!', user: users[0] });
-    } catch (error) { res.status(500).json({ message: 'Lỗi server' }); }
+    } catch (error) { 
+        console.error(error); 
+        res.status(500).json({ message: 'Lỗi server' }); 
+    }
 };
 
 exports.changePassword = async (req, res) => {
@@ -190,23 +230,43 @@ exports.changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     try {
         const [users] = await db.execute('SELECT password FROM users WHERE id = ?', [userId]);
-        if(!await bcrypt.compare(currentPassword, users[0].password)) return res.status(400).json({ message: 'Sai mật khẩu' });
+        const user = users[0];
+        if(!await bcrypt.compare(currentPassword, user.password)) return res.status(400).json({ message: 'Sai mật khẩu' });
+        
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await db.execute('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
         res.json({ message: 'Đổi mật khẩu thành công' });
     } catch (error) { res.status(500).json({ message: 'Lỗi server' }); }
 };
 
-// --- ADMIN ACTIONS ---
+
+// ============================================================
+// ADMIN ACTIONS
+// ============================================================
 
 exports.getAllUsers = async (req, res) => {
     try { const [rows] = await db.execute('SELECT id, username, email, full_name, role, status, warnings, ban_expires_at, created_at FROM users ORDER BY created_at DESC'); res.json(rows); } catch (e) { res.status(500).json({message: 'Lỗi'}); }
 };
-exports.deleteUser = async (req, res) => { try { await db.execute('DELETE FROM users WHERE id = ?', [req.params.id]); res.json({message:'Đã xóa'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } };
-exports.warnUser = async (req, res) => { try { await db.execute('UPDATE users SET warnings = warnings + 1 WHERE id = ?', [req.params.id]); res.json({message:'Đã cảnh báo'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } };
+
+exports.deleteUser = async (req, res) => { 
+    try { await db.execute('DELETE FROM users WHERE id = ?', [req.params.id]); res.json({message:'Đã xóa'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } 
+};
+
+exports.warnUser = async (req, res) => { 
+    try { await db.execute('UPDATE users SET warnings = warnings + 1 WHERE id = ?', [req.params.id]); res.json({message:'Đã cảnh báo'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } 
+};
+
 exports.banUser = async (req, res) => { 
     const {id} = req.params; const {days} = req.body; 
-    let d = null, s = 'banned'; if(days != -1 && days != '-1') { d = new Date(); d.setDate(d.getDate() + parseInt(days)); d = d.toISOString().slice(0,19).replace('T',' '); }
+    let d = null, s = 'banned'; 
+    if(days != -1 && days != '-1') { 
+        d = new Date(); 
+        d.setDate(d.getDate() + parseInt(days)); 
+        d = d.toISOString().slice(0,19).replace('T',' '); 
+    }
     try { await db.execute('UPDATE users SET status = ?, ban_expires_at = ? WHERE id = ?', [s, d, id]); res.json({message:'Đã chặn'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } 
 };
-exports.unbanUser = async (req, res) => { try { await db.execute("UPDATE users SET status = 'active', ban_expires_at = NULL WHERE id = ?", [req.params.id]); res.json({message:'Đã mở khóa'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } };
+
+exports.unbanUser = async (req, res) => { 
+    try { await db.execute("UPDATE users SET status = 'active', ban_expires_at = NULL WHERE id = ?", [req.params.id]); res.json({message:'Đã mở khóa'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } 
+};
