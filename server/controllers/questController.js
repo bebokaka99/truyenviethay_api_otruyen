@@ -4,86 +4,123 @@ const { createNotificationInternal } = require('./notificationController');
 // Helper tính level
 const getLevelFromExp = (exp) => Math.floor(Math.sqrt(exp / 100)) || 1;
 
-// Lấy danh sách nhiệm vụ & trạng thái của User
+// Lấy danh sách nhiệm vụ
 exports.getQuests = async (req, res) => {
     const userId = req.user.id;
     try {
         const [rows] = await db.execute(`
             SELECT q.*, 
-                   COALESCE(uq.current_count, 0) as current_count, 
-                   COALESCE(uq.is_claimed, 0) as is_claimed,
-                   uq.last_updated
+                   -- Logic hiển thị: Nếu khác ngày thì trả về 0 để UI hiện chưa làm
+                   CASE 
+                       WHEN q.type = 'daily' AND (uq.last_updated IS NULL OR DATEDIFF(CURRENT_DATE(), uq.last_updated) != 0) THEN 0
+                       ELSE COALESCE(uq.current_count, 0)
+                   END as current_count,
+
+                   CASE 
+                       WHEN q.type = 'daily' AND (uq.last_updated IS NULL OR DATEDIFF(CURRENT_DATE(), uq.last_updated) != 0) THEN 0
+                       ELSE COALESCE(uq.is_claimed, 0)
+                   END as is_claimed
+
             FROM quests q
             LEFT JOIN user_quests uq ON q.id = uq.quest_id AND uq.user_id = ?
+            ORDER BY FIELD(q.type, 'daily', 'weekly', 'achievement'), q.target_count ASC
         `, [userId]);
-        const today = new Date().toISOString().slice(0, 10);
-        
-        const processedQuests = rows.map(q => {
-            const isToday = q.last_updated && q.last_updated.toISOString().slice(0, 10) === today;
-            return {
-                ...q,
-                current_count: isToday ? q.current_count : 0,
-                is_claimed: isToday ? q.is_claimed : 0
-            };
-        });
 
-        res.json(processedQuests);
+        res.json(rows);
     } catch (error) {
-        console.error(error);
+        console.error("Lỗi getQuests:", error);
         res.status(500).json({ message: 'Lỗi server' });
     }
 };
 
-// Nhận thưởng
+// Nhận thưởng (ĐÃ SỬA LỖI TRANSACTION)
 exports.claimReward = async (req, res) => {
     const userId = req.user.id;
     const { quest_id } = req.body;
 
+    let connection; // Khai báo biến kết nối
+
     try {
-        // Check điều kiện
-        const [quests] = await db.execute(
-            `SELECT q.reward_exp, uq.current_count, q.target_count, uq.is_claimed, u.exp, u.full_name 
+        // 1. Lấy kết nối từ Pool
+        connection = await db.getConnection();
+
+        // 2. Kiểm tra điều kiện (Đọc dữ liệu thì dùng db.execute cũng được, nhưng dùng connection cho đồng bộ)
+        const [quests] = await connection.execute(
+            `SELECT q.type, q.reward_exp, uq.current_count, q.target_count, uq.is_claimed, u.exp, 
+                    DATEDIFF(CURRENT_DATE(), uq.last_updated) as days_diff
              FROM quests q
              JOIN user_quests uq ON q.id = uq.quest_id
              JOIN users u ON uq.user_id = u.id
-             WHERE uq.user_id = ? AND uq.quest_id = ? AND uq.last_updated = CURRENT_DATE()`,
+             WHERE uq.user_id = ? AND uq.quest_id = ?`,
             [userId, quest_id]
         );
 
-        if (quests.length === 0) return res.status(400).json({ message: 'Nhiệm vụ chưa hoàn thành hoặc đã qua ngày.' });
+        if (quests.length === 0) {
+            connection.release(); // Nhớ giải phóng nếu return sớm
+            return res.status(400).json({ message: 'Nhiệm vụ chưa được thực hiện.' });
+        }
+        
         const quest = quests[0];
 
-        if (quest.is_claimed === 1) return res.status(400).json({ message: 'Đã nhận thưởng rồi.' }); // Check is_claimed là 1
-        if (quest.current_count < quest.target_count) return res.status(400).json({ message: 'Chưa đạt mục tiêu.' });
-
-        // Bắt đầu Transaction
-        await db.beginTransaction();
-
-        // Cập nhật is_claimed = TRUE (1)
-        await db.execute('UPDATE user_quests SET is_claimed = 1 WHERE user_id = ? AND quest_id = ?', [userId, quest_id]);
-        
-        const newExp = quest.exp + quest.reward_exp;
-        const newLevel = getLevelFromExp(newExp);
-
-        // Cộng XP và cập nhật Level trong DB
-        await db.execute('UPDATE users SET exp = ?, level = ? WHERE id = ?', [newExp, newLevel, userId]);
-
-        // Check Level Up và tạo thông báo
-        const oldLevel = getLevelFromExp(quest.exp);
-        if (newLevel > oldLevel) {
-            await createNotificationInternal(
-                userId, 'level_up', 'Chúc mừng thăng cấp!', `Bạn đã đạt cấp độ ${newLevel}.`
-            );
+        // Check Logic Ngày
+        if (quest.type === 'daily' && quest.days_diff !== 0) {
+            connection.release();
+            return res.status(400).json({ message: 'Nhiệm vụ thuộc ngày cũ. Hãy làm mới!' });
         }
 
-        await db.commit();
-        
-        // Trả về XP mới để Frontend cập nhật thanh XP
-        res.json({ message: `Nhận thành công +${quest.reward_exp} XP`, new_exp: newExp });
+        if (Number(quest.is_claimed) === 1) {
+            connection.release();
+            return res.status(400).json({ message: 'Đã nhận thưởng rồi.' });
+        }
+        if (quest.current_count < quest.target_count) {
+            connection.release();
+            return res.status(400).json({ message: 'Chưa đạt mục tiêu.' });
+        }
+
+        // 3. Bắt đầu Transaction (Quan trọng)
+        await connection.beginTransaction();
+
+        try {
+            // A. Update is_claimed
+            await connection.execute(
+                'UPDATE user_quests SET is_claimed = 1 WHERE user_id = ? AND quest_id = ?', 
+                [userId, quest_id]
+            );
+            
+            // B. Update User XP
+            const currentExp = quest.exp || 0;
+            const newExp = currentExp + quest.reward_exp;
+            const newLevel = getLevelFromExp(newExp);
+
+            await connection.execute(
+                'UPDATE users SET exp = ?, level = ? WHERE id = ?', 
+                [newExp, newLevel, userId]
+            );
+
+            // Commit (Lưu lại)
+            await connection.commit();
+
+            // 4. Notify (Làm sau khi commit để tránh lỗi rollback)
+            try {
+                const oldLevel = getLevelFromExp(currentExp);
+                if (newLevel > oldLevel) {
+                    await createNotificationInternal(userId, 'level_up', 'Thăng cấp!', `Bạn đã đạt cấp độ ${newLevel}.`);
+                }
+            } catch (e) { console.error("Lỗi tạo notif:", e); }
+
+            res.json({ message: `Nhận thành công +${quest.reward_exp} XP`, new_exp: newExp });
+
+        } catch (transError) {
+            // Nếu lỗi trong lúc update -> Rollback
+            await connection.rollback();
+            throw transError;
+        }
 
     } catch (error) {
-        await db.rollback();
-        console.error("Lỗi Claim Reward:", error);
-        res.status(500).json({ message: 'Lỗi server khi nhận thưởng.' });
+        console.error("🔥 LỖI SERVER CLAIM REWARD:", error);
+        res.status(500).json({ message: 'Lỗi hệ thống: ' + error.message });
+    } finally {
+        // Luôn luôn giải phóng kết nối cuối cùng
+        if (connection) connection.release();
     }
 };

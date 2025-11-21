@@ -1,24 +1,24 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-// import hàm tạo thông báo 
 const { createNotificationInternal } = require('./notificationController'); 
 
-// Helper nội bộ để cập nhật tiến độ nhiệm vụ điểm danh
+// --- HÀM LOGIC ĐIỂM DANH (ĐÃ SỬA ĐỔI) ---
 const updateDailyLoginQuest = async (userId) => {
     try {
         const [qRows] = await db.execute("SELECT id, target_count FROM quests WHERE quest_key = 'daily_login'");
-        
         if (qRows.length === 0) return;
         const questId = qRows[0].id;
 
+        // Chỉ cần dùng CURRENT_DATE() của SQL (đã set +7) là đủ
         await db.execute(`
             INSERT INTO user_quests (user_id, quest_id, current_count, is_claimed, last_updated)
             VALUES (?, ?, 1, 0, CURRENT_DATE())
             ON DUPLICATE KEY UPDATE 
-                current_count = IF(last_updated = CURRENT_DATE(), current_count, 1),
-                is_claimed = IF(last_updated = CURRENT_DATE(), is_claimed, 0),
-                last_updated = CURRENT_DATE()
+                -- Nếu khác ngày -> Reset. Nếu cùng ngày -> Giữ nguyên.
+                current_count = IF(last_updated != CURRENT_DATE(), 1, current_count),
+                is_claimed    = IF(last_updated != CURRENT_DATE(), 0, is_claimed),
+                last_updated  = CURRENT_DATE()
         `, [userId, questId]);
 
         const [progRows] = await db.execute("SELECT is_claimed FROM user_quests WHERE user_id = ? AND quest_id = ?", [userId, questId]);
@@ -28,9 +28,7 @@ const updateDailyLoginQuest = async (userId) => {
                 userId, 'quest', 'Nhiệm vụ hoàn thành!', 'Bạn đã điểm danh thành công. Nhận +50XP ngay!', '/profile?tab=tasks'
              );
         }
-    } catch (error) {
-        console.error("Lỗi cập nhật quest Daily Login:", error);
-    }
+    } catch (error) { console.error("Lỗi điểm danh:", error); }
 };
 
 // --- ĐĂNG KÝ ---
@@ -65,7 +63,7 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Tìm user theo email (Phải SELECT các cột XP, Rank Style)
+        // Lấy đủ cột exp và rank_style
         const [users] = await db.execute('SELECT id, username, email, full_name, avatar, role, exp, rank_style, password FROM users WHERE email = ?', [email]);
         
         if (users.length === 0) {
@@ -74,25 +72,22 @@ exports.login = async (req, res) => {
 
         const user = users[0];
 
-        // Kiểm tra mật khẩu
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Mật khẩu không đúng!' });
         }
         
-        // Kích hoạt nhiệm vụ đăng nhập hàng ngày
+        // Gọi hàm điểm danh
         if (user.role === 'user') {
             await updateDailyLoginQuest(user.id);
         }
 
-        // Tạo token (JWT)
         const token = jwt.sign(
             { id: user.id, role: user.role }, 
             process.env.JWT_SECRET, 
             { expiresIn: '7d' }
         );
 
-        // Trả về thông tin user
         res.json({
             token,
             user: {
@@ -102,7 +97,7 @@ exports.login = async (req, res) => {
                 full_name: user.full_name,
                 avatar: user.avatar,
                 role: user.role,
-                exp: user.exp,
+                exp: user.exp, 
                 rank_style: user.rank_style 
             }
         });

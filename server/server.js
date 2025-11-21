@@ -8,26 +8,21 @@ dotenv.config();
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
-// THÊM: Imports cho Quest và Notification
 const notificationRoutes = require('./routes/notification');
 const questRoutes = require('./routes/quest');
 
-// Cấu hình
 app.use(cors());
 app.use(express.json());
 
-// CẤU HÌNH STATIC FILE
+// Static file cho ảnh avatar
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// Đăng ký Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
-
-// THÊM: Gắn routes Quest và Notification
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/quests', questRoutes);
 
-// Route test
 app.get('/', (req, res) => {
     res.send('Backend Node.js đang chạy ổn định!');
 });

@@ -10,7 +10,8 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    timezone: '+07:00' // <--- THÊM DÒNG NÀY QUAN TRỌNG NHẤT
 });
 
 // Kiểm tra kết nối
@@ -18,9 +19,9 @@ pool.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Lỗi kết nối Database:', err.message);
     } else {
-        console.log('✅ Đã kết nối Database MySQL thành công!');
+        console.log('✅ Đã kết nối Database MySQL (Timezone +07:00)!');
         connection.release();
     }
 });
 
-module.exports = pool.promise(); // Dùng promise để code gọn hơn (async/await)
+module.exports = pool.promise();

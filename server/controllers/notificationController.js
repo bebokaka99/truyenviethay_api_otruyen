@@ -8,7 +8,6 @@ exports.getNotifications = async (req, res) => {
             'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', 
             [userId]
         );
-        // Đếm số lượng chưa đọc
         const [countRow] = await db.execute(
             'SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = FALSE', 
             [userId]
@@ -30,7 +29,7 @@ exports.markAsRead = async (req, res) => {
     }
 };
 
-// Hàm nội bộ để tạo thông báo (Dùng cho các controller khác gọi)
+// Hàm nội bộ (QUAN TRỌNG)
 exports.createNotificationInternal = async (userId, type, title, message, link = null) => {
     try {
         await db.execute(

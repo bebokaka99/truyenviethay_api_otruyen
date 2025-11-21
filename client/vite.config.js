@@ -1,19 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // cho phép truy cập từ IP LAN
-    port: 5173, // port dev server
+    host: true,
+    port: 5173,
     proxy: {
-      // tất cả request /api sẽ được chuyển tiếp tới backend
       '/api': {
-        target: 'http://192.168.1.154:5000', // IP LAN của PC
+        target: 'http://192.168.1.154:5000',
         changeOrigin: true,
         secure: false,
       },
     },
+    // Thêm dòng này để cho phép domain giả
+    allowedHosts: ['truyenviethay.vn', 'localhost', '192.168.1.154'],
   },
 })
