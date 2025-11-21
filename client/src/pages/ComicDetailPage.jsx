@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
 import LoginModal from '../components/common/LoginModal';
-import CommentSection from '../components/comic/CommentSection'; // <--- IMPORT MỚI
+import CommentSection from '../components/comic/CommentSection';
+import StarRating from '../components/common/StarRating'; // <--- IMPORT MỚI
 import { 
   RiBookOpenLine, RiBookmarkLine, RiUser3Line, RiTimeLine, 
   RiFileList2Line, RiListCheck, RiSortDesc, RiSortAsc, 
@@ -38,10 +39,13 @@ const ComicDetailPage = () => {
   const [reportReason, setReportReason] = useState('');
   const [reportSent, setReportSent] = useState(false);
 
+  // State Đánh Giá (Rating)
+  const [ratingInfo, setRatingInfo] = useState({ average: 0, total: 0, user_score: 0 });
+
+  // 1. Fetch Dữ liệu Truyện
   useEffect(() => {
     const fetchComicDetail = async () => {
       try {
-        // 1. Lấy chi tiết truyện
         const response = await axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${slug}`);
         const data = response.data.data;
         setComic(data.item);
@@ -49,12 +53,9 @@ const ComicDetailPage = () => {
         
         if (data.item.chapters && data.item.chapters.length > 0) {
             const svData = data.item.chapters[0].server_data;
-            
-            // Tìm chương mới nhất (Số lớn nhất) để dùng cho nút Follow
+            // Tìm chương mới nhất
             const sortedByNum = [...svData].sort((a, b) => parseFloat(b.chapter_name) - parseFloat(a.chapter_name));
             setLatestChapterApi(sortedByNum[0].chapter_name);
-
-            // Set danh sách chương hiển thị
             setChapters(sortedByNum); 
         } else {
             setChapters([]);
@@ -77,8 +78,18 @@ const ComicDetailPage = () => {
     window.scrollTo(0, 0);
   }, [slug]);
 
-  // Check Follow & History
+  // 2. Check Follow, History & Rating
   useEffect(() => {
+      // Gọi API Rating (Không cần login cũng xem được điểm TB)
+      const fetchRating = async () => {
+        try {
+            const userId = user ? user.id : '';
+            const res = await axios.get(`/api/rating/comic/${slug}?userId=${userId}`);
+            setRatingInfo(res.data);
+        } catch (e) { console.error("Lỗi rating:", e); }
+      };
+      fetchRating();
+
       if (user && comic) {
           const checkUserStatus = async () => {
               try {
@@ -101,9 +112,10 @@ const ComicDetailPage = () => {
       }
   }, [slug, user, comic]);
 
+  // --- HANDLERS ---
+
   const handleToggleFollow = async () => {
       if (!user) { setShowLoginModal(true); return; }
-
       setFollowLoading(true);
       const token = localStorage.getItem('user_token');
       const headers = { Authorization: `Bearer ${token}` };
@@ -125,9 +137,29 @@ const ComicDetailPage = () => {
       finally { setFollowLoading(false); }
   };
 
+  const handleRate = async (score) => {
+      if (!user) { setShowLoginModal(true); return; }
+      try {
+          const token = localStorage.getItem('user_token');
+          const res = await axios.post('/api/rating', {
+              comic_slug: slug,
+              score: score
+          }, { headers: { Authorization: `Bearer ${token}` } });
+          
+          setRatingInfo(prev => ({
+              ...prev,
+              average: res.data.average,
+              total: res.data.total,
+              user_score: score
+          }));
+          alert("Đánh giá thành công!");
+      } catch (e) { alert("Lỗi đánh giá"); }
+  };
+
   const handleSubmitReport = () => {
       if (!reportReason) return;
-      // console.log(`Report: ${comic.name} - ${reportReason}`);
+      // Gọi API Report thật nếu muốn (ở bài trước ta đã làm API này rồi)
+      // axios.post('/api/reports', ...)
       setReportSent(true);
       setTimeout(() => {
           setReportSent(false);
@@ -143,7 +175,6 @@ const ComicDetailPage = () => {
   const authors = Array.isArray(comic.author) ? comic.author.join(', ') : (comic.author || 'Đang cập nhật');
   const formatChapter = (name) => name.toLowerCase().includes('chapter') ? name : `Chương ${name}`;
 
-  // Sắp xếp hiển thị (UI Sort)
   const sortedChapters = [...chapters].sort((a, b) => {
       const numA = parseFloat(a.chapter_name);
       const numB = parseFloat(b.chapter_name);
@@ -177,41 +208,73 @@ const ComicDetailPage = () => {
             </div>
             <div className="flex-1 text-center md:text-left flex flex-col gap-3 w-full">
                <h1 className="text-2xl md:text-4xl font-black text-white leading-tight font-heading drop-shadow-md">{comic.name}</h1>
+               
                <div className="flex flex-wrap justify-center md:justify-start gap-2 text-sm">
                   {comic.category && comic.category.map((cat) => (
                       <Link key={cat.id} to={`/the-loai/${cat.slug}`} className="px-2.5 py-0.5 rounded border border-white/10 bg-[#252538] text-gray-400 text-xs font-bold hover:text-primary hover:border-primary transition-colors uppercase">{cat.name}</Link>
                   ))}
                </div>
+               
                <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-8 text-sm mt-2 bg-[#1a1a2e]/80 backdrop-blur-sm p-3 rounded-lg border border-white/5 w-fit mx-auto md:mx-0">
                   <div className="flex items-center gap-2"><RiUser3Line className="text-primary" /><span className="text-gray-300 font-bold text-xs md:text-sm">{authors}</span></div>
                   <div className="w-px h-3 bg-white/20 hidden md:block"></div>
                   <div className="flex items-center gap-2"><RiTimeLine className="text-primary" /><span className="text-gray-300 text-xs md:text-sm">{comic.updatedAt ? new Date(comic.updatedAt).toLocaleDateString('vi-VN') : 'N/A'}</span></div>
                </div>
+
+               {/* --- KHU VỰC ĐÁNH GIÁ (RATING) --- */}
+<div className="mt-4 p-3 bg-[#1a1a2e] border border-white/10 rounded-xl max-w-md">
+                   {/* Hàng 1: Điểm Trung Bình & Tổng lượt */}
+                   <div className="flex items-center gap-3 mb-2">
+                       <span className="text-3xl font-black text-yellow-500 leading-none">
+                           {ratingInfo.average || "0.0"}
+                       </span>
+                       <div className="flex flex-col">
+                           <StarRating 
+                               rating={parseFloat(ratingInfo.average)} 
+                               readonly={true} 
+                               size="text-sm" // Sao nhỏ gọn
+                           />
+                           <span className="text-[10px] text-gray-400 mt-0.5">
+                               {ratingInfo.total > 0 ? `${ratingInfo.total} người đã đánh giá` : 'Chưa có đánh giá'}
+                           </span>
+                       </div>
+                   </div>
+
+                   {/* Hàng 2: User Vote (Ngăn cách bởi đường kẻ mờ) */}
+                   <div className="border-t border-white/5 pt-2 flex items-center justify-between">
+                       <span className="text-xs text-gray-300 font-bold">
+                           {user ? "Bạn chấm mấy điểm?" : "Đăng nhập để chấm điểm"}
+                       </span>
+                       <StarRating 
+                           rating={ratingInfo.user_score} 
+                           onRate={handleRate} 
+                           readonly={!user} 
+                           size="text-lg" // Sao tương tác to hơn xíu
+                       />
+                   </div>
+               </div>
+
             </div>
          </div>
 
          {/* BUTTONS */}
          <div className="flex flex-col md:flex-row gap-3 mt-6 md:mt-8 border-b border-white/5 pb-8">
-             {/* Đọc Tiếp */}
              {lastReadChapter && (
                  <Link to={`/doc-truyen/${slug}/${lastReadChapter}`} className="flex-1 md:flex-none bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 md:py-3 px-8 rounded-full flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-orange-900/30 border border-orange-500">
                     <RiPlayCircleLine size={20} /> <span className="uppercase text-sm">Đọc Tiếp Chương {lastReadChapter}</span>
                  </Link>
              )}
-             {/* Đọc Từ Đầu */}
              {firstStoryChap ? (
                 <Link to={`/doc-truyen/${slug}/${firstStoryChap.chapter_name}`} className={`flex-1 md:flex-none font-bold py-3 md:py-3 px-8 rounded-full flex items-center justify-center gap-2 transition-transform active:scale-95 ${lastReadChapter ? 'bg-[#252538] hover:bg-white/10 text-white border border-white/10' : 'bg-primary hover:bg-blue-600 text-white shadow-lg shadow-blue-900/30'}`}>
                    <RiBookOpenLine size={20} /> <span className="uppercase text-sm">{lastReadChapter ? 'Đọc Lại Từ Đầu' : 'Đọc Từ Đầu'}</span>
                 </Link>
              ) : <button disabled className="flex-1 md:flex-none bg-gray-700 text-gray-400 font-bold py-3 px-8 rounded-full cursor-not-allowed flex items-center justify-center gap-2">Chưa có chương</button>}
              
-             {/* Theo Dõi */}
              <button onClick={handleToggleFollow} disabled={followLoading} className={`flex-1 md:flex-none font-bold py-3 px-8 rounded-full flex items-center justify-center gap-2 transition-colors border ${isFollowed ? 'bg-red-600 hover:bg-red-700 text-white border-red-600' : 'bg-[#252538] hover:bg-white/10 text-white border-white/10'}`}>
                  {isFollowed ? <RiBookmarkFill size={20} /> : <RiBookmarkLine size={20} />}
                  <span className="uppercase text-sm">{isFollowed ? 'Đã Theo Dõi' : 'Theo Dõi'}</span>
              </button>
 
-             {/* Báo Lỗi */}
              <button onClick={() => setShowReportModal(true)} className="w-12 h-12 rounded-full bg-[#252538] hover:text-yellow-500 hover:bg-yellow-500/10 border border-white/10 flex items-center justify-center transition-colors" title="Báo lỗi">
                  <RiFlag2Line size={20} />
              </button>
@@ -254,7 +317,7 @@ const ComicDetailPage = () => {
                    </div>
                 </section>
 
-                {/* --- TÍCH HỢP BÌNH LUẬN Ở ĐÂY --- */}
+                {/* --- BÌNH LUẬN --- */}
                 <section>
                     <CommentSection comicSlug={slug} />
                 </section>

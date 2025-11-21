@@ -5,12 +5,19 @@ import Footer from '../components/layouts/Footer';
 import HeroSection from '../components/home/HeroSection'; 
 import AutoSlideSection from '../components/home/AutoSlideSection';
 import HugeGridSection from '../components/home/HugeGridSection';
+import { RiTrophyFill } from 'react-icons/ri';
+
+// Helper random số trang từ min đến max
+const getRandomPage = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const HomePage = () => {
   // --- STATE ---
-  const [newUpdateStories, setNewUpdateStories] = useState([]); // Slider
-  const [hotStories, setHotStories] = useState([]); // Grid Hot
+  const [newUpdateStories, setNewUpdateStories] = useState([]); 
+  const [hotStories, setHotStories] = useState([]); 
   
+  // State cho Top Rating (Mới)
+  const [topRatedStories, setTopRatedStories] = useState([]); 
+
   // Các thể loại phổ biến
   const [mangaStories, setMangaStories] = useState([]);
   const [manhwaStories, setManhwaStories] = useState([]);
@@ -26,46 +33,64 @@ const HomePage = () => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // 1. Gọi API cấu hình Admin (Chạy song song hoặc trước)
+        // 1. Gọi API cấu hình Admin
         try {
-             // Dùng đường dẫn tương đối vì đã có Proxy
             const settingRes = await axios.get('/api/user/public/settings');
             setSettingsMap(settingRes.data);
         } catch (e) { console.error("Lỗi lấy settings:", e); }
 
-        // 2. Lấy cấu hình chung & Slider (API Home Otruyen)
+        // 2. Lấy cấu hình chung & Slider (Mới cập nhật)
         const homeRes = await axios.get('https://otruyenapi.com/v1/api/home');
         const domain = homeRes.data.data.APP_DOMAIN_CDN_IMAGE;
         setDomainAnh(domain);
         setNewUpdateStories(homeRes.data.data.items);
 
-        // --- HÀM HELPER GỌI NHIỀU TRANG ---
-        const fetchMultiPage = async (urlInfo, pageLimit) => {
-            const promises = [];
-            for (let i = 1; i <= pageLimit; i++) {
-                promises.push(axios.get(`${urlInfo}?page=${i}`));
-            }
-            const responses = await Promise.all(promises);
-            let allItems = [];
-            responses.forEach(res => {
-                if(res.data.data && res.data.data.items) {
-                    allItems = [...allItems, ...res.data.data.items];
-                }
-            });
-            // Lọc trùng lặp ID
-            return Array.from(new Map(allItems.map(item => [item._id, item])).values());
+        // --- LOGIC FETCH TRUYỆN ---
+        const fetchStories = async (url) => {
+            const res = await axios.get(url);
+            return res.data.data.items || [];
         };
 
-        // 3. Gọi song song dữ liệu các phần
-        const [hotData, mangaData, manhwaData, manhuaData, ngonTinhData] = await Promise.all([
-            fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 3),
-            fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manga', 2),
-            fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhwa', 2),
-            fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manhua', 2),
-            fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/ngon-tinh', 2),
+        // --- LOGIC FETCH TOP RATING (MỚI) ---
+        // Lấy danh sách Slug từ DB mình -> Gọi Otruyen lấy chi tiết
+        const fetchTopRated = async () => {
+            try {
+                // Lấy Top Weekly cho nó sinh động
+                const dbRes = await axios.get('/api/rating/top?type=weekly'); 
+                const topList = dbRes.data; // List slug
+                
+                if (topList.length === 0) return [];
+
+                const promises = topList.map(async (item) => {
+                    try {
+                        const detailRes = await axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${item.comic_slug}`);
+                        return detailRes.data.data.item;
+                    } catch (e) { return null; }
+                });
+                
+                const results = await Promise.all(promises);
+                return results.filter(s => s !== null);
+            } catch (e) { return []; }
+        };
+
+        // 3. Random Page cho các thể loại (Để F5 là ra truyện khác)
+        const pageManga = getRandomPage(1, 10);
+        const pageManhwa = getRandomPage(1, 10);
+        const pageManhua = getRandomPage(1, 10);
+        const pageNgonTinh = getRandomPage(1, 10);
+
+        // 4. Gọi song song tất cả
+        const [hotData, topData, mangaData, manhwaData, manhuaData, ngonTinhData] = await Promise.all([
+            fetchStories('https://otruyenapi.com/v1/api/danh-sach/truyen-moi?page=1'), // Hot thì lấy trang 1 cho chuẩn
+            fetchTopRated(), // Top Rating từ DB mình
+            fetchStories(`https://otruyenapi.com/v1/api/the-loai/manga?page=${pageManga}`),
+            fetchStories(`https://otruyenapi.com/v1/api/the-loai/manhwa?page=${pageManhwa}`),
+            fetchStories(`https://otruyenapi.com/v1/api/the-loai/manhua?page=${pageManhua}`),
+            fetchStories(`https://otruyenapi.com/v1/api/the-loai/ngon-tinh?page=${pageNgonTinh}`),
         ]);
 
         setHotStories(hotData);
+        setTopRatedStories(topData);
         setMangaStories(mangaData);
         setManhwaStories(manhwaData);
         setManhuaStories(manhuaData);
@@ -96,24 +121,38 @@ const HomePage = () => {
           
           <HeroSection />
 
-          {/* Slider */}
+          {/* 1. Slider: Mới cập nhật */}
           <AutoSlideSection 
             title="Mới Cập Nhật" 
             stories={newUpdateStories} 
             domainAnh={domainAnh}
           />
 
-          {/* Truyền prop hotMap={settingsMap} vào tất cả các HugeGridSection 
-             để chúng biết truyện nào là HOT hoặc ẨN
-          */}
-
+          {/* 2. Grid: Truyện Hot (API Otruyen) */}
           <HugeGridSection 
             title="Truyện Hot Mới" 
             stories={hotStories} 
             domainAnh={domainAnh}
             hotMap={settingsMap} 
           />
+          
+          {/* 3. Grid: BXH Cộng Đồng (Dữ liệu thật từ User đánh giá) - MỚI */}
+          {topRatedStories.length > 0 && (
+              <div className="bg-gradient-to-b from-[#1f1f3a] to-[#101022]">
+                  <div className="py-4 px-3 sm:px-8 md:px-20 flex items-center gap-2 text-yellow-500 mb-[-20px] pt-10">
+                      <RiTrophyFill className="text-2xl animate-bounce" />
+                      <span className="font-bold text-sm tracking-widest uppercase">Được yêu thích nhất tuần qua</span>
+                  </div>
+                  <HugeGridSection 
+                    title="BXH Cộng Đồng" 
+                    stories={topRatedStories} 
+                    domainAnh={domainAnh}
+                    hotMap={settingsMap}
+                  />
+              </div>
+          )}
 
+          {/* 4. Các thể loại (Đã Random Page) */}
           <div className="bg-[#151525]">
             <HugeGridSection 
               title="Manhwa Cực Phẩm" 

@@ -13,6 +13,9 @@ import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/admin/DashboardPage';
 import AdminRoute from './components/auth/AdminRoute'; 
+import AboutPage from './pages/AboutPage';
+import NotFoundPage from './pages/NotFoundPage';
+
 function App() {
   return (
     <Routes>
@@ -24,7 +27,7 @@ function App() {
        <Route path="/the-loai/:slug" element={<CategoryPage />} />
        <Route path="/danh-sach" element={<ListPage />} />
        <Route path="/xep-hang" element={<RankingPage />} />
-
+        <Route path="/about" element={<AboutPage />} />
        {/* Route Auth */}
        <Route path="/login" element={<LoginPage />} />
        <Route path="/register" element={<RegisterPage />} />
@@ -36,6 +39,8 @@ function App() {
        <Route element={<AdminRoute />}>
           <Route path="/admin" element={<DashboardPage />} />
        </Route>
+       {/* --- ROUTE 404 (ĐẶT Ở CUỐI CÙNG) --- */}
+       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
