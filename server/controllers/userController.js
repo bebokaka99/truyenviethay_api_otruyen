@@ -300,3 +300,24 @@ exports.updateComicSetting = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server' });
     }
 };
+// 17. [PUBLIC] Lấy danh sách cấu hình truyện (HOT / HIDDEN)
+exports.getPublicComicSettings = async (req, res) => {
+    try {
+        // Chỉ lấy slug và trạng thái
+        const [rows] = await db.execute('SELECT slug, is_hidden, is_recommended FROM comic_settings');
+        
+        // Chuyển đổi sang object cho dễ tra cứu ở frontend: { "slug-truyen": { is_hot: 1, is_hidden: 0 } }
+        const settingsMap = {};
+        rows.forEach(row => {
+            settingsMap[row.slug] = {
+                is_hot: row.is_recommended === 1,
+                is_hidden: row.is_hidden === 1
+            };
+        });
+        
+        res.json(settingsMap);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({});
+    }
+};

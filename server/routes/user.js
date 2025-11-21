@@ -28,7 +28,7 @@ const {
     addToLibrary, removeFromLibrary, getLibrary, checkFollowStatus, 
     saveHistory, getHistory, checkReadingHistory,
     updateProfile, changePassword, 
-    getAllUsers, deleteUser, warnUser, banUser, unbanUser, getManagedComics, updateComicSetting
+    getAllUsers, deleteUser, warnUser, banUser, unbanUser, getManagedComics, updateComicSetting,  getPublicComicSettings
 } = require('../controllers/userController');
 
 // --- ROUTES ---
@@ -43,6 +43,7 @@ router.get('/library/check/:comic_slug', authMiddleware, checkFollowStatus);
 router.post('/history', authMiddleware, saveHistory);
 router.get('/history', authMiddleware, getHistory);
 router.get('/history/check/:comic_slug', authMiddleware, checkReadingHistory);
+router.get('/public/settings', getPublicComicSettings);
 
 // Profile
 router.put('/profile', authMiddleware, upload.single('avatar'), updateProfile);

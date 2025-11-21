@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Header from '../components/layouts/Header';
-import Footer from '../components/layouts/Footer';
+import Footer from '../components/layouts/Footer'; 
 import HeroSection from '../components/home/HeroSection'; 
 import AutoSlideSection from '../components/home/AutoSlideSection';
 import HugeGridSection from '../components/home/HugeGridSection';
 
 const HomePage = () => {
   // --- STATE ---
-  const [newUpdateStories, setNewUpdateStories] = useState([]);
-  const [hotStories, setHotStories] = useState([]); 
+  const [newUpdateStories, setNewUpdateStories] = useState([]); // Slider
+  const [hotStories, setHotStories] = useState([]); // Grid Hot
   
   // Các thể loại phổ biến
   const [mangaStories, setMangaStories] = useState([]);
@@ -20,16 +20,26 @@ const HomePage = () => {
   const [domainAnh, setDomainAnh] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // State lưu danh sách HOT/ẨN từ Admin
+  const [settingsMap, setSettingsMap] = useState({}); 
+
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // Lấy cấu hình chung & Slider (API Home)
+        // 1. Gọi API cấu hình Admin (Chạy song song hoặc trước)
+        try {
+             // Dùng đường dẫn tương đối vì đã có Proxy
+            const settingRes = await axios.get('/api/user/public/settings');
+            setSettingsMap(settingRes.data);
+        } catch (e) { console.error("Lỗi lấy settings:", e); }
+
+        // 2. Lấy cấu hình chung & Slider (API Home Otruyen)
         const homeRes = await axios.get('https://otruyenapi.com/v1/api/home');
         const domain = homeRes.data.data.APP_DOMAIN_CDN_IMAGE;
         setDomainAnh(domain);
         setNewUpdateStories(homeRes.data.data.items);
 
-        // --- Hàm helper gọi nhiều trang ---
+        // --- HÀM HELPER GỌI NHIỀU TRANG ---
         const fetchMultiPage = async (urlInfo, pageLimit) => {
             const promises = [];
             for (let i = 1; i <= pageLimit; i++) {
@@ -46,7 +56,7 @@ const HomePage = () => {
             return Array.from(new Map(allItems.map(item => [item._id, item])).values());
         };
 
-        //Gọi song song dữ liệu các phần (Tối ưu tốc độ)
+        // 3. Gọi song song dữ liệu các phần
         const [hotData, mangaData, manhwaData, manhuaData, ngonTinhData] = await Promise.all([
             fetchMultiPage('https://otruyenapi.com/v1/api/danh-sach/truyen-moi', 3),
             fetchMultiPage('https://otruyenapi.com/v1/api/the-loai/manga', 2),
@@ -84,53 +94,56 @@ const HomePage = () => {
       ) : (
         <main className="flex-1 pb-20">
           
-          {/* HERO SECTION (BANNER LỚN) */}
           <HeroSection />
 
-          {/* SLIDER: TRUYỆN MỚI CẬP NHẬT */}
+          {/* Slider */}
           <AutoSlideSection 
             title="Mới Cập Nhật" 
             stories={newUpdateStories} 
             domainAnh={domainAnh}
           />
 
-          {/* GRID: TRUYỆN HOT (Nhiều truyện nhất) */}
+          {/* Truyền prop hotMap={settingsMap} vào tất cả các HugeGridSection 
+             để chúng biết truyện nào là HOT hoặc ẨN
+          */}
+
           <HugeGridSection 
             title="Truyện Hot Mới" 
             stories={hotStories} 
             domainAnh={domainAnh}
+            hotMap={settingsMap} 
           />
 
-          {/* GRID: MANHWA (Hàn Quốc) */}
           <div className="bg-[#151525]">
             <HugeGridSection 
               title="Manhwa Cực Phẩm" 
               stories={manhwaStories} 
               domainAnh={domainAnh}
+              hotMap={settingsMap}
             />
           </div>
 
-          {/* GRID: MANHUA (Trung Quốc) */}
           <HugeGridSection 
             title="Manhua Chọn Lọc" 
             stories={manhuaStories} 
             domainAnh={domainAnh}
+            hotMap={settingsMap}
           />
 
-          {/* GRID: MANGA (Nhật Bản) */}
           <div className="bg-[#151525]">
             <HugeGridSection 
               title="Manga Kinh Điển" 
               stories={mangaStories} 
               domainAnh={domainAnh}
+              hotMap={settingsMap}
             />
           </div>
 
-          {/* GRID: NGÔN TÌNH */}
           <HugeGridSection 
             title="Ngôn Tình Lãng Mạn" 
             stories={ngonTinhStories} 
             domainAnh={domainAnh}
+            hotMap={settingsMap}
           />
 
         </main>

@@ -1,43 +1,32 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { RiArrowRightSLine } from 'react-icons/ri';
+import { RiArrowRightSLine, RiFireFill } from 'react-icons/ri';
 
-const HugeGridSection = ({ title, stories, domainAnh }) => {
+const HugeGridSection = ({ title, stories, domainAnh, hotMap = {} }) => {
   if (!stories || stories.length === 0) return null;
   
-  // 1. Hàm Format tên chương
+  // Helper: Format Chương
   const formatChapter = (truyen) => {
     const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || 'Full';
     const chapNum = chapRaw.replace(/chapter/gi, '').replace(/chương/gi, '').trim();
     return isNaN(chapNum) && chapNum !== 'Full' ? `Chương ${chapNum}` : (chapNum === 'Full' ? 'Full' : `Chương ${chapNum}`);
   };
 
-  // 2. Hàm tính thời gian
+  // Helper: Tính thời gian
   const timeAgo = (dateString) => {
       if (!dateString) return '';
       const now = new Date();
       const date = new Date(dateString);
       const seconds = Math.floor((now - date) / 1000);
 
-      let interval = Math.floor(seconds / 31536000);
-      if (interval >= 1) return interval + " năm trước";
-      
-      interval = Math.floor(seconds / 2592000);
-      if (interval >= 1) return interval + " tháng trước";
-      
-      interval = Math.floor(seconds / 604800);
-      if (interval >= 1) return interval + " tuần trước";
-      
-      interval = Math.floor(seconds / 86400);
-      if (interval >= 1) return interval + " ngày trước";
-      
-      interval = Math.floor(seconds / 3600);
-      if (interval >= 1) return interval + " giờ trước";
-      
-      interval = Math.floor(seconds / 60);
-      if (interval >= 1) return interval + " phút trước";
-      
-      return "Vừa xong";
+      if (seconds < 60) return 'Vừa xong';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} phút`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} giờ`;
+      const days = Math.floor(hours / 24);
+      if (days < 30) return `${days} ngày`;
+      return date.toLocaleDateString('vi-VN');
   };
 
   return (
@@ -52,36 +41,52 @@ const HugeGridSection = ({ title, stories, domainAnh }) => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
-        {stories.map((truyen) => (
-          <Link key={truyen._id} to={`/truyen-tranh/${truyen.slug}`} className="flex flex-col gap-2 group cursor-pointer">
-            <div className="w-full aspect-[2/3] bg-[#1f1f3a] rounded-lg overflow-hidden relative border border-white/5 group-hover:border-green-500/50 transition-all shadow-sm">
-              <img 
-                src={`${domainAnh}/uploads/comics/${truyen.thumb_url}`}
-                alt={truyen.name}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              
-              {/* flex-row: Ngang hàng | items-center: Căn giữa dọc | gap-1: Khoảng cách nhỏ */}
-              <div className="absolute top-1.5 right-1.5 flex flex-row items-center gap-1">
+        {stories.map((truyen) => {
+            // Lấy cấu hình từ hotMap (Admin đã set)
+            const setting = hotMap[truyen.slug];
+            const isHidden = setting?.is_hidden;
+            const isHot = setting?.is_hot;
+
+            // Nếu Admin ẩn truyện này -> Không render
+            if (isHidden) return null;
+
+            return (
+              <Link key={truyen._id} to={`/truyen-tranh/${truyen.slug}`} className="flex flex-col gap-2 group cursor-pointer relative">
+                <div className="w-full aspect-[2/3] bg-[#1f1f3a] rounded-lg overflow-hidden relative border border-white/5 group-hover:border-green-500/50 transition-all shadow-sm">
+                  <img 
+                    src={`${domainAnh}/uploads/comics/${truyen.thumb_url}`}
+                    alt={truyen.name}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
                   
-                  {/* 1. THỜI GIAN (MÀU ĐỎ - BÊN TRÁI) */}
-                  <span className="bg-red-600 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
-                     {timeAgo(truyen.updatedAt)}
-                  </span>
+                  {/* --- BADGE GROUP --- */}
+                  <div className="absolute top-1.5 right-1.5 flex flex-wrap justify-end items-center gap-1 max-w-[90%]">
+                      
+                      {/* 1. BADGE HOT (Vàng) */}
+                      {isHot && (
+                          <span className="bg-yellow-500 text-black text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md flex items-center gap-0.5 animate-pulse">
+                             <RiFireFill size={10} /> HOT
+                          </span>
+                      )}
 
-                  {/* 2. CHƯƠNG (MÀU XANH - BÊN PHẢI) */}
-                  <span className="bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
-                     {formatChapter(truyen)}
-                  </span>
-              </div>
+                      {/* 2. BADGE THỜI GIAN (Đỏ) */}
+                      <span className="bg-red-600 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                         {timeAgo(truyen.updatedAt)}
+                      </span>
 
-            </div>
-            <h4 className="text-gray-200 text-xs md:text-sm font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5em]">
-              {truyen.name}
-            </h4>
-          </Link>
-        ))}
+                      {/* 3. BADGE CHƯƠNG (Xanh) */}
+                      <span className="bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                         {formatChapter(truyen)}
+                      </span>
+                  </div>
+                </div>
+                <h4 className="text-gray-200 text-xs md:text-sm font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5em]">
+                  {truyen.name}
+                </h4>
+              </Link>
+            );
+        })}
       </div>
     </div>
   );
