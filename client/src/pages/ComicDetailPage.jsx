@@ -85,10 +85,10 @@ const ComicDetailPage = () => {
                   const token = localStorage.getItem('user_token');
                   const headers = { Authorization: `Bearer ${token}` };
                   
-                  const resFollow = await axios.get(`http://localhost:5000/api/user/library/check/${slug}`, { headers });
+                  const resFollow = await axios.get(`/api/user/library/check/${slug}`, { headers });
                   setIsFollowed(resFollow.data.isFollowed);
 
-                  const resHistory = await axios.get(`http://localhost:5000/api/user/history/check/${slug}`, { headers });
+                  const resHistory = await axios.get(`/api/user/history/check/${slug}`, { headers });
                   if (resHistory.data.chapter_name) {
                       setLastReadChapter(resHistory.data.chapter_name);
                   }
@@ -110,10 +110,10 @@ const ComicDetailPage = () => {
 
       try {
           if (isFollowed) {
-              await axios.delete(`http://localhost:5000/api/user/library/${slug}`, { headers });
+              await axios.delete(`/api/user/library/${slug}`, { headers });
               setIsFollowed(false);
           } else {
-              await axios.post('http://localhost:5000/api/user/library', {
+              await axios.post('/api/user/library', {
                   comic_slug: slug,
                   comic_name: comic.name,
                   comic_image: `${domainAnh}/uploads/comics/${comic.thumb_url}`,

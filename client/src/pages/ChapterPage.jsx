@@ -87,14 +87,14 @@ const ChapterPage = () => {
                 // 4. Tự động lưu lịch sử
                 const token = localStorage.getItem('user_token');
                 if (token) {
-                    axios.post('http://localhost:5000/api/user/history', {
+                    axios.post('/api/user/history', {
                         comic_slug: slug,
                         comic_name: comicItem.name,
                         comic_image: detailRes.data.data.APP_DOMAIN_CDN_IMAGE + '/uploads/comics/' + comicItem.thumb_url,
                         chapter_name: chapterName
                     }, { headers: { Authorization: `Bearer ${token}` } }).catch(e => console.error(e));
 
-                    axios.get(`http://localhost:5000/api/user/library/check/${slug}`, {
+                    axios.get(`/api/user/library/check/${slug}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     }).then(res => setIsFollowed(res.data.isFollowed)).catch(e => console.error(e));
                 }
@@ -127,10 +127,10 @@ const ChapterPage = () => {
 
         try {
             if (isFollowed) {
-                await axios.delete(`http://localhost:5000/api/user/library/${slug}`, { headers });
+                await axios.delete(`/api/user/library/${slug}`, { headers });
                 setIsFollowed(false);
             } else {
-                await axios.post('http://localhost:5000/api/user/library', {
+                await axios.post('/api/user/library', {
                     comic_slug: slug,
                     comic_name: comicName,
                     comic_image: comicThumb,

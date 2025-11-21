@@ -51,7 +51,7 @@ const ProfilePage = () => {
       
       try {
           const token = localStorage.getItem('user_token');
-          const res = await axios.get(`${API_URL}/api/quests`, {
+          const res = await axios.get(`${BACKEND_URL}/api/quests`, {
               headers: { Authorization: `Bearer ${token}` }
           });
           setTasks(res.data); 
@@ -101,7 +101,7 @@ const ProfilePage = () => {
 
       try {
           const token = localStorage.getItem('user_token');
-          const res = await axios.put(`${API_URL}/api/user/profile`, formData, {
+          const res = await axios.put(`${BACKEND_URL}/api/user/profile`, formData, {
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
           });
           
@@ -118,7 +118,7 @@ const ProfilePage = () => {
   const handleClaim = async (task) => {
     try {
         const token = localStorage.getItem('user_token');
-        const res = await axios.post(`${API_URL}/api/quests/claim`, { quest_id: task.id }, {
+        const res = await axios.post(`${BACKEND_URL}/api/quests/claim`, { quest_id: task.id }, {
             headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -142,7 +142,7 @@ const ProfilePage = () => {
       setLoading(true); setMessage({ type: '', content: '' });
       try {
           const token = localStorage.getItem('user_token');
-          await axios.put(`${API_URL}/api/user/password`, {
+          await axios.put(`${BACKEND_URL}/api/user/password`, {
               currentPassword: passData.currentPassword, newPassword: passData.newPassword
           }, { headers: { Authorization: `Bearer ${token}` } });
           setMessage({ type: 'success', content: 'Đổi mật khẩu thành công!' });

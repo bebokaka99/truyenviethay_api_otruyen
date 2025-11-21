@@ -12,7 +12,7 @@ import {
 } from 'react-icons/ri';
 
 // --- KHAI BÁO BIẾN NÀY ĐỂ SỬA LỖI ---
-const API_URL = 'http://localhost:5000'; 
+const BACKEND_URL = 'http://192.168.1.154:5000';
 
 const Header = () => {
   const [categories, setCategories] = useState([]);
@@ -30,7 +30,7 @@ const Header = () => {
   const getAvatarUrl = (avatarPath) => {
       if (!avatarPath) return null;
       if (avatarPath.startsWith('http')) return avatarPath;
-      return `${API_URL}/${avatarPath}`;
+      return `${BACKEND_URL}/${avatarPath}`;
   };
 
   // Hàm fetch thông báo
@@ -39,7 +39,7 @@ const Header = () => {
       try {
           const token = localStorage.getItem('user_token');
           // Sử dụng API_URL ở đây
-          const res = await axios.get(`${API_URL}/api/notifications`, {
+          const res = await axios.get(`${BACKEND_URL}/api/notifications`, {
               headers: { Authorization: `Bearer ${token}` }
           });
           setNotifications(res.data.items);
@@ -53,7 +53,7 @@ const Header = () => {
       if (unreadCount > 0) {
           try {
             const token = localStorage.getItem('user_token');
-            await axios.put(`${API_URL}/api/notifications/read-all`, {}, {
+            await axios.put(`${BACKEND_URL}/api/notifications/read-all`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUnreadCount(0); 

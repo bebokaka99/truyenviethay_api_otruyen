@@ -10,7 +10,7 @@ import {
 } from 'react-icons/ri';
 
 // --- KHAI BÁO BIẾN NÀY ĐỂ SỬA LỖI ---
-const API_URL = 'http://localhost:5000';
+const BACKEND_URL = 'http://192.168.1.154:5000';
 
 const CommentSection = ({ comicSlug, chapterName = null }) => {
     const { user } = useAuth();
@@ -24,7 +24,7 @@ const CommentSection = ({ comicSlug, chapterName = null }) => {
     const getAvatar = (path) => {
         if (!path) return `https://ui-avatars.com/api/?background=random`;
         if (path.startsWith('http')) return path;
-        return `${API_URL}/${path}`; // Sử dụng biến API_URL
+        return `${BACKEND_URL}/${path}`; // Sử dụng biến API_URL
     };
 
     const timeAgo = (dateString) => {
@@ -45,7 +45,7 @@ const CommentSection = ({ comicSlug, chapterName = null }) => {
                 const userIdParam = user ? `&userId=${user.id}` : '';
                 const chapterParam = `?chapter_name=${chapterName || ''}`; 
                 
-                const res = await axios.get(`${API_URL}/api/comments/${comicSlug}${chapterParam}${userIdParam}`);
+                const res = await axios.get(`${BACKEND_URL}/api/comments/${comicSlug}${chapterParam}${userIdParam}`);
                 setComments(res.data);
             } catch (error) { console.error("Lỗi tải bình luận:", error); }
             finally { setLoading(false); }
@@ -61,7 +61,7 @@ const CommentSection = ({ comicSlug, chapterName = null }) => {
         setSubmitting(true);
         try {
             const token = localStorage.getItem('user_token');
-            const res = await axios.post(`${API_URL}/api/comments`, {
+            const res = await axios.post(`${BACKEND_URL}/api/comments`, {
                 comic_slug: comicSlug,
                 content: textToSend,
                 parent_id: parentId,
