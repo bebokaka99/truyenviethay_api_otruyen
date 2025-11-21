@@ -153,3 +153,31 @@ exports.toggleLike = async (req, res) => {
         res.status(500).json({ message: 'Lỗi server' });
     }
 };
+// 4. [ADMIN] Lấy TẤT CẢ bình luận (Mới nhất) để quản lý
+exports.getAllCommentsAdmin = async (req, res) => {
+    try {
+        const [rows] = await db.execute(`
+            SELECT c.*, u.username, u.avatar 
+            FROM comments c 
+            JOIN users u ON c.user_id = u.id 
+            ORDER BY c.created_at DESC 
+            LIMIT 100
+        `);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+// 5. [ADMIN] Xóa bình luận bất kỳ
+exports.deleteCommentAdmin = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.execute('DELETE FROM comments WHERE id = ?', [id]);
+        // Xóa luôn các like và reply liên quan (MySQL Cascade sẽ tự lo nếu đã config đúng, nhưng code thêm cho chắc)
+        // await db.execute('DELETE FROM comment_likes WHERE comment_id = ?', [id]); 
+        res.json({ message: 'Đã xóa bình luận' });
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};

@@ -11,6 +11,7 @@ const userRoutes = require('./routes/user');
 const notificationRoutes = require('./routes/notification');
 const questRoutes = require('./routes/quest');
 const commentRoutes = require('./routes/comment');
+const reportRoutes = require('./routes/report');
 
 app.use(cors());
 app.use(express.json());
@@ -24,6 +25,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/quests', questRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.get('/', (req, res) => {
     res.send('Backend Node.js đang chạy ổn định!');
