@@ -270,3 +270,33 @@ exports.banUser = async (req, res) => {
 exports.unbanUser = async (req, res) => { 
     try { await db.execute("UPDATE users SET status = 'active', ban_expires_at = NULL WHERE id = ?", [req.params.id]); res.json({message:'Đã mở khóa'}); } catch(e) { res.status(500).json({message:'Lỗi'}); } 
 };
+// 15. [ADMIN] Lấy danh sách truyện đang được quản lý (đã chỉnh sửa)
+exports.getManagedComics = async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT * FROM comic_settings ORDER BY updated_at DESC');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};
+
+// 16. [ADMIN] Cập nhật trạng thái truyện (Ẩn/Hiện/Đề cử)
+exports.updateComicSetting = async (req, res) => {
+    const { slug, name, is_hidden, is_recommended } = req.body;
+    try {
+        // Dùng UPSERT (Insert nếu chưa có, Update nếu có rồi)
+        await db.execute(`
+            INSERT INTO comic_settings (slug, name, is_hidden, is_recommended) 
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                name = VALUES(name),
+                is_hidden = VALUES(is_hidden),
+                is_recommended = VALUES(is_recommended)
+        `, [slug, name, is_hidden, is_recommended]);
+        
+        res.json({ message: 'Cập nhật trạng thái truyện thành công!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Lỗi server' });
+    }
+};

@@ -28,7 +28,7 @@ const {
     addToLibrary, removeFromLibrary, getLibrary, checkFollowStatus, 
     saveHistory, getHistory, checkReadingHistory,
     updateProfile, changePassword, 
-    getAllUsers, deleteUser, warnUser, banUser, unbanUser 
+    getAllUsers, deleteUser, warnUser, banUser, unbanUser, getManagedComics, updateComicSetting
 } = require('../controllers/userController');
 
 // --- ROUTES ---
@@ -54,5 +54,8 @@ router.delete('/admin/users/:id', authMiddleware, adminMiddleware, deleteUser);
 router.post('/admin/users/:id/warn', authMiddleware, adminMiddleware, warnUser);
 router.post('/admin/users/:id/ban', authMiddleware, adminMiddleware, banUser);
 router.post('/admin/users/:id/unban', authMiddleware, adminMiddleware, unbanUser);
+// Route Quản lý Truyện
+router.get('/admin/comics', authMiddleware, adminMiddleware, getManagedComics);
+router.post('/admin/comics', authMiddleware, adminMiddleware, updateComicSetting);
 
 module.exports = router;
