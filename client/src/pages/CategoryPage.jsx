@@ -5,7 +5,7 @@ import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
 import { 
   RiArrowRightSLine, RiErrorWarningLine, RiFilter3Line, 
-  RiCloseLine, RiCheckLine, RiLoader4Line 
+  RiCloseLine, RiLoader4Line, RiCheckLine, RiDeleteBinLine
 } from 'react-icons/ri';
 
 const CategoryPage = () => {
@@ -20,16 +20,20 @@ const CategoryPage = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [domainAnh, setDomainAnh] = useState('');
   
-  // state phân trang
+  // State phân trang
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // state bộ lọc
+  // --- STATE BỘ LỌC (NÂNG CẤP) ---
   const [showFilter, setShowFilter] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all'); 
-  const [sortBy, setSortBy] = useState('default'); 
+  
+  // State áp dụng thực tế (Dùng để lọc danh sách)
+  const [appliedFilter, setAppliedFilter] = useState({ status: 'all', sortBy: 'default' });
+  
+  // State tạm thời (Dùng để UI hiển thị khi đang chọn)
+  const [tempFilter, setTempFilter] = useState({ status: 'all', sortBy: 'default' });
 
-  // Lấy danh sách tất cả thể loại (để hiển thị trong bộ lọc)
+  // Lấy danh sách tất cả thể loại
   useEffect(() => {
     const fetchAllCats = async () => {
         try {
@@ -40,7 +44,7 @@ const CategoryPage = () => {
     fetchAllCats();
   }, []);
 
-  // Hàm gọi dữ liệu truyện (Hỗ trợ phân trang)
+  // Hàm gọi dữ liệu
   const fetchStories = async (pageNum, isNewSlug = false) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -60,7 +64,6 @@ const CategoryPage = () => {
       if (isNewSlug) {
           setStories(newItems);
       } else {
-          // Lọc trùng lặp khi load more (đề phòng API trả trùng)
           setStories(prev => {
               const existingIds = new Set(prev.map(s => s._id));
               const filteredNew = newItems.filter(s => !existingIds.has(s._id));
@@ -68,7 +71,6 @@ const CategoryPage = () => {
           });
       }
 
-      // Kiểm tra xem còn trang sau không
       const totalPages = Math.ceil(data.params.pagination.totalItems / data.params.pagination.totalItemsPerPage);
       setHasMore(pageNum < totalPages);
 
@@ -80,49 +82,87 @@ const CategoryPage = () => {
     }
   };
 
-  // Reset khi đổi thể loại (slug thay đổi)
+  // Reset khi đổi thể loại
   useEffect(() => {
     setPage(1);
     setStories([]);
-    setFilterStatus('all');
-    setSortBy('default');
+    // Reset bộ lọc về mặc định
+    setAppliedFilter({ status: 'all', sortBy: 'default' });
+    setTempFilter({ status: 'all', sortBy: 'default' });
     setShowFilter(false);
+    
     fetchStories(1, true);
     window.scrollTo(0, 0);
   }, [slug]);
 
-  // Xử lý Load More
   const handleLoadMore = () => {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchStories(nextPage);
   };
 
-  // logic lọc & sắp xếp client-side
+  // --- XỬ LÝ NÚT LỌC ---
+  const handleApplyFilter = () => {
+      setAppliedFilter(tempFilter); // Áp dụng bộ lọc tạm thời vào thực tế
+      // setShowFilter(false); // Có thể đóng hoặc giữ nguyên tùy ý
+  };
+
+  const handleClearFilter = () => {
+      const defaultState = { status: 'all', sortBy: 'default' };
+      setTempFilter(defaultState);
+      setAppliedFilter(defaultState);
+  };
+
+  // --- LOGIC LỌC CLIENT-SIDE ---
   const filteredStories = useMemo(() => {
       let result = [...stories];
 
-      // Lọc theo trạng thái
-      if (filterStatus !== 'all') {
-          result = result.filter(s => s.status === filterStatus);
+      // 1. Lọc trạng thái
+      if (appliedFilter.status !== 'all') {
+          result = result.filter(s => s.status === appliedFilter.status);
       }
 
-      // Sắp xếp
-      if (sortBy === 'name') {
+      // 2. Sắp xếp
+      if (appliedFilter.sortBy === 'name') {
           result.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (sortBy === 'new_update') {
-          // API mặc định thường đã là mới cập nhật, nhưng sort lại cho chắc nếu cần
+      } else if (appliedFilter.sortBy === 'new_update') {
           result.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      } else if (appliedFilter.sortBy === 'new_chapter') {
+          result.sort((a, b) => {
+              const getChapNum = (str) => {
+                  if (!str) return 0;
+                  const num = parseFloat(str.replace(/\D/g, ''));
+                  return isNaN(num) ? 0 : num;
+              };
+              return getChapNum(b.latest_chapter) - getChapNum(a.latest_chapter);
+          });
       }
 
       return result;
-  }, [stories, filterStatus, sortBy]);
+  }, [stories, appliedFilter]);
 
-  // Helper format chương
+  // Helper
   const formatChapter = (truyen) => {
     const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || 'Full';
     const chapNum = chapRaw.replace(/chapter/gi, '').replace(/chương/gi, '').trim();
     return isNaN(chapNum) && chapNum !== 'Full' ? `Chương ${chapNum}` : (chapNum === 'Full' ? 'Full' : `Chương ${chapNum}`);
+  };
+
+  // Helper TimeAgo
+  const timeAgo = (dateString) => {
+      if (!dateString) return '';
+      const now = new Date();
+      const date = new Date(dateString);
+      const seconds = Math.floor((now - date) / 1000);
+      
+      if (seconds < 60) return 'Vừa xong';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} phút trước`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} giờ trước`;
+      const days = Math.floor(hours / 24);
+      if (days < 30) return `${days} ngày trước`;
+      return date.toLocaleDateString('vi-VN');
   };
 
   return (
@@ -131,7 +171,7 @@ const CategoryPage = () => {
       
       <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* --- HEADER & FILTER TOGGLE --- */}
+        {/* Header & Toggle */}
         <div className="mb-8 border-b border-white/10 pb-6">
             <div className="flex items-center gap-2 text-xs text-gray-500 font-bold uppercase mb-2">
                 <Link to="/" className="hover:text-primary">Trang chủ</Link>
@@ -149,7 +189,6 @@ const CategoryPage = () => {
                     </p>
                 </div>
 
-                {/* Nút Mở Bộ Lọc */}
                 <button 
                     onClick={() => setShowFilter(!showFilter)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all ${showFilter ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-[#1a1a2e] border border-white/10 hover:bg-white/10'}`}
@@ -160,71 +199,66 @@ const CategoryPage = () => {
             </div>
         </div>
 
-        {/* --- FILTER PANEL (EXPANDABLE) --- */}
+        {/* --- FILTER PANEL (NÂNG CẤP) --- */}
         {showFilter && (
             <div className="mb-8 bg-[#151525] p-6 rounded-2xl border border-white/5 shadow-xl animate-fade-in-down">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
                     
-                    {/* 1. Trạng Thái */}
+                    {/* Trạng Thái (Thay đổi tempFilter) */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-primary pl-2">Trạng Thái</h4>
                         <div className="flex flex-wrap gap-2">
-                            {[
-                                { id: 'all', label: 'Tất Cả' },
-                                { id: 'ongoing', label: 'Đang Tiến Hành' },
-                                { id: 'completed', label: 'Hoàn Thành' }
-                            ].map(status => (
-                                <button
-                                    key={status.id}
-                                    onClick={() => setFilterStatus(status.id)}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${filterStatus === status.id ? 'bg-primary border-primary text-white' : 'bg-[#1a1a2e] border-white/10 hover:border-white/30'}`}
-                                >
-                                    {status.label}
-                                </button>
+                            {[{ id: 'all', label: 'Tất Cả' }, { id: 'ongoing', label: 'Đang Tiến Hành' }, { id: 'completed', label: 'Hoàn Thành' }].map(status => (
+                                <button key={status.id} onClick={() => setTempFilter({...tempFilter, status: status.id})} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${tempFilter.status === status.id ? 'bg-primary border-primary text-white' : 'bg-[#1a1a2e] border-white/10 hover:border-white/30'}`}>{status.label}</button>
                             ))}
                         </div>
                     </div>
 
-                    {/* 2. Sắp Xếp */}
+                    {/* Sắp Xếp (Thay đổi tempFilter) */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-green-500 pl-2">Sắp Xếp</h4>
                         <div className="flex flex-wrap gap-2">
                             {[
                                 { id: 'default', label: 'Mặc Định' },
                                 { id: 'new_update', label: 'Mới Cập Nhật' },
+                                { id: 'new_chapter', label: 'Chương Mới' },
                                 { id: 'name', label: 'Tên A-Z' }
                             ].map(sort => (
-                                <button
-                                    key={sort.id}
-                                    onClick={() => setSortBy(sort.id)}
-                                    className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${sortBy === sort.id ? 'bg-green-600 border-green-600 text-white' : 'bg-[#1a1a2e] border-white/10 hover:border-white/30'}`}
-                                >
-                                    {sort.label}
-                                </button>
+                                <button key={sort.id} onClick={() => setTempFilter({...tempFilter, sortBy: sort.id})} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${tempFilter.sortBy === sort.id ? 'bg-green-600 border-green-600 text-white' : 'bg-[#1a1a2e] border-white/10 hover:border-white/30'}`}>{sort.label}</button>
                             ))}
                         </div>
                     </div>
 
-                    {/* 3. Chuyển Nhanh Thể Loại */}
+                    {/* Chuyển Nhanh Thể Loại */}
                     <div>
                         <h4 className="text-white font-bold text-sm uppercase mb-3 border-l-2 border-purple-500 pl-2">Chuyển Thể Loại</h4>
                         <div className="relative">
-                            <select 
-                                onChange={(e) => navigate(`/the-loai/${e.target.value}`)}
-                                value={slug}
-                                className="w-full bg-[#1a1a2e] border border-white/10 text-gray-300 text-sm rounded-lg p-2.5 focus:outline-none focus:border-primary"
-                            >
-                                {fullCategories.map(cat => (
-                                    <option key={cat._id} value={cat.slug}>{cat.name}</option>
-                                ))}
+                            <select onChange={(e) => navigate(`/the-loai/${e.target.value}`)} value={slug} className="w-full bg-[#1a1a2e] border border-white/10 text-gray-300 text-sm rounded-lg p-2.5 focus:outline-none focus:border-primary cursor-pointer">
+                                {fullCategories.map(cat => (<option key={cat._id} value={cat.slug}>{cat.name}</option>))}
                             </select>
                         </div>
                     </div>
                 </div>
+
+                {/* --- FILTER ACTIONS --- */}
+                <div className="flex justify-end gap-3 border-t border-white/5 pt-4">
+                    <button 
+                        onClick={handleClearFilter}
+                        className="flex items-center gap-2 px-5 py-2 rounded-lg bg-[#252538] hover:bg-red-500/20 hover:text-red-500 text-gray-400 text-sm font-bold transition-colors"
+                    >
+                        <RiDeleteBinLine /> Xóa Lọc
+                    </button>
+                    <button 
+                        onClick={handleApplyFilter}
+                        className="flex items-center gap-2 px-6 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-bold shadow-lg shadow-green-900/30 transition-all"
+                    >
+                        <RiCheckLine /> Áp Dụng
+                    </button>
+                </div>
             </div>
         )}
 
-        {/* --- LOADING INITIAL --- */}
+        {/* Loading */}
         {loading && (
             <div className="py-40 flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 border-4 border-white/10 border-t-primary rounded-full animate-spin"></div>
@@ -232,18 +266,18 @@ const CategoryPage = () => {
             </div>
         )}
 
-        {/* --- EMPTY STATE --- */}
+        {/* Empty */}
         {!loading && filteredStories.length === 0 && (
             <div className="py-20 text-center text-gray-500 bg-[#151525] rounded-xl border border-white/5 border-dashed">
                 <RiErrorWarningLine className="text-5xl mx-auto mb-4 opacity-50" />
                 <p>Không tìm thấy truyện nào phù hợp với bộ lọc.</p>
-                <button onClick={() => {setFilterStatus('all'); setSortBy('default');}} className="mt-4 text-primary hover:underline text-sm font-bold">
+                <button onClick={handleClearFilter} className="mt-4 text-primary hover:underline text-sm font-bold">
                     Xóa bộ lọc
                 </button>
             </div>
         )}
 
-        {/* --- GRID TRUYỆN --- */}
+        {/* Grid */}
         {!loading && filteredStories.length > 0 && (
             <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6 animate-fade-in-up">
@@ -256,11 +290,19 @@ const CategoryPage = () => {
                                     className="w-full h-full object-cover"
                                     loading="lazy"
                                 />
-                                <div className="absolute top-1.5 right-1.5 bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                                    {formatChapter(truyen)}
+                                
+                                {/* --- BADGE GROUP (MỚI) --- */}
+                                <div className="absolute top-1.5 right-1.5 flex flex-row items-center gap-1">
+                                    {/* Thời gian (Đỏ) */}
+                                    <span className="bg-red-600 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                                       {timeAgo(truyen.updatedAt)}
+                                    </span>
+                                    {/* Chương (Xanh) */}
+                                    <span className="bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                                       {formatChapter(truyen)}
+                                    </span>
                                 </div>
                                 
-                                {/* Status Badge on Grid (Optional but useful for filter check) */}
                                 <div className={`absolute bottom-0 left-0 right-0 text-[9px] text-center font-bold text-white py-0.5 ${truyen.status === 'ongoing' ? 'bg-black/60' : 'bg-blue-600/80'}`}>
                                     {truyen.status === 'ongoing' ? 'ONGOING' : 'FULL'}
                                 </div>
@@ -272,22 +314,15 @@ const CategoryPage = () => {
                     ))}
                 </div>
 
-                {/* --- LOAD MORE BUTTON --- */}
                 {hasMore && (
                     <div className="mt-12 text-center">
-                        <button 
-                            onClick={handleLoadMore}
-                            disabled={loadingMore}
-                            className="group relative px-8 py-3 rounded-full bg-[#1a1a2e] border border-white/10 hover:bg-primary hover:text-white hover:border-primary text-gray-300 font-bold transition-all disabled:opacity-50 overflow-hidden"
-                        >
+                        <button onClick={handleLoadMore} disabled={loadingMore} className="group relative px-8 py-3 rounded-full bg-[#1a1a2e] border border-white/10 hover:bg-primary hover:text-white hover:border-primary text-gray-300 font-bold transition-all disabled:opacity-50 overflow-hidden">
                             <span className="relative z-10 flex items-center gap-2">
                                 {loadingMore && <RiLoader4Line className="animate-spin" />}
                                 {loadingMore ? 'Đang tải thêm...' : 'Xem Thêm Truyện'}
                             </span>
                         </button>
-                        <p className="text-xs text-gray-600 mt-3">
-                            Đang hiển thị {filteredStories.length} truyện
-                        </p>
+                        <p className="text-xs text-gray-600 mt-3">Đang hiển thị {filteredStories.length} truyện</p>
                     </div>
                 )}
             </>

@@ -5,10 +5,39 @@ import { RiArrowRightSLine } from 'react-icons/ri';
 const HugeGridSection = ({ title, stories, domainAnh }) => {
   if (!stories || stories.length === 0) return null;
   
+  // 1. Hàm Format tên chương
   const formatChapter = (truyen) => {
     const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || 'Full';
     const chapNum = chapRaw.replace(/chapter/gi, '').replace(/chương/gi, '').trim();
     return isNaN(chapNum) && chapNum !== 'Full' ? `Chương ${chapNum}` : (chapNum === 'Full' ? 'Full' : `Chương ${chapNum}`);
+  };
+
+  // 2. Hàm tính thời gian
+  const timeAgo = (dateString) => {
+      if (!dateString) return '';
+      const now = new Date();
+      const date = new Date(dateString);
+      const seconds = Math.floor((now - date) / 1000);
+
+      let interval = Math.floor(seconds / 31536000);
+      if (interval >= 1) return interval + " năm trước";
+      
+      interval = Math.floor(seconds / 2592000);
+      if (interval >= 1) return interval + " tháng trước";
+      
+      interval = Math.floor(seconds / 604800);
+      if (interval >= 1) return interval + " tuần trước";
+      
+      interval = Math.floor(seconds / 86400);
+      if (interval >= 1) return interval + " ngày trước";
+      
+      interval = Math.floor(seconds / 3600);
+      if (interval >= 1) return interval + " giờ trước";
+      
+      interval = Math.floor(seconds / 60);
+      if (interval >= 1) return interval + " phút trước";
+      
+      return "Vừa xong";
   };
 
   return (
@@ -22,7 +51,6 @@ const HugeGridSection = ({ title, stories, domainAnh }) => {
         </Link>
       </div>
 
-      {/* SỬA TẠI ĐÂY: grid-cols-2 gap-3 (rất quan trọng cho mobile) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
         {stories.map((truyen) => (
           <Link key={truyen._id} to={`/truyen-tranh/${truyen.slug}`} className="flex flex-col gap-2 group cursor-pointer">
@@ -34,10 +62,20 @@ const HugeGridSection = ({ title, stories, domainAnh }) => {
                 loading="lazy"
               />
               
-              {/* Badge chương giống Detail */}
-              <div className="absolute top-1.5 right-1.5 bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">
-                 {formatChapter(truyen)}
+              {/* flex-row: Ngang hàng | items-center: Căn giữa dọc | gap-1: Khoảng cách nhỏ */}
+              <div className="absolute top-1.5 right-1.5 flex flex-row items-center gap-1">
+                  
+                  {/* 1. THỜI GIAN (MÀU ĐỎ - BÊN TRÁI) */}
+                  <span className="bg-red-600 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                     {timeAgo(truyen.updatedAt)}
+                  </span>
+
+                  {/* 2. CHƯƠNG (MÀU XANH - BÊN PHẢI) */}
+                  <span className="bg-green-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md whitespace-nowrap">
+                     {formatChapter(truyen)}
+                  </span>
               </div>
+
             </div>
             <h4 className="text-gray-200 text-xs md:text-sm font-bold leading-snug line-clamp-2 group-hover:text-primary transition-colors min-h-[2.5em]">
               {truyen.name}

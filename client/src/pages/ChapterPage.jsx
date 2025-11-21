@@ -4,7 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
-import LoginModal from '../components/common/LoginModal'; 
+import LoginModal from '../components/common/LoginModal';
+import CommentSection from '../components/comic/CommentSection'; 
 import {
     RiArrowLeftSLine, RiArrowRightSLine, RiListCheck,
     RiErrorWarningLine, RiHome4Line, RiHeart3Line, RiHeart3Fill,
@@ -14,12 +15,12 @@ import {
 const ChapterPage = () => {
     const { slug, chapterName } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth(); 
+    const { user } = useAuth();
 
     const [images, setImages] = useState([]);
     const [chapterList, setChapterList] = useState([]);
     const [comicName, setComicName] = useState('');
-    const [comicThumb, setComicThumb] = useState(''); 
+    const [comicThumb, setComicThumb] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -42,13 +43,13 @@ const ChapterPage = () => {
             setImages([]);
 
             try {
-                // Lấy chi tiết truyện (để lấy list chương và thumb)
+                // 1. Lấy chi tiết truyện
                 const detailRes = await axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${slug}`);
                 const comicItem = detailRes.data.data.item;
                 setComicName(comicItem.name);
                 setComicThumb(detailRes.data.data.APP_DOMAIN_CDN_IMAGE + '/uploads/comics/' + comicItem.thumb_url);
-                
-                // Sắp xếp chương (Cao -> Thấp)
+
+                // 2. Sắp xếp chương (Cao -> Thấp)
                 let list = comicItem.chapters[0]?.server_data || [];
                 list.sort((a, b) => {
                     const numA = parseFloat(a.chapter_name);
@@ -68,7 +69,7 @@ const ChapterPage = () => {
                 setNextChapter(nextIndex >= 0 ? list[nextIndex].chapter_name : null);
                 setPrevChapter(prevIndex < list.length ? list[prevIndex].chapter_name : null);
 
-                // Lấy ảnh chương
+                // 3. Lấy ảnh chương
                 const chapterApiUrl = list[currentIndex].chapter_api_data;
                 const imageRes = await axios.get(chapterApiUrl);
                 const imgData = imageRes.data.data;
@@ -83,18 +84,17 @@ const ChapterPage = () => {
                 setImages(fullImages);
                 setLoading(false);
 
-                // Tự động lưu lịch sử (Nếu đã login)
+                // 4. Tự động lưu lịch sử
                 const token = localStorage.getItem('user_token');
                 if (token) {
-                    axios.post('/api/user/history', {
+                    axios.post('http://localhost:5000/api/user/history', {
                         comic_slug: slug,
                         comic_name: comicItem.name,
                         comic_image: detailRes.data.data.APP_DOMAIN_CDN_IMAGE + '/uploads/comics/' + comicItem.thumb_url,
                         chapter_name: chapterName
                     }, { headers: { Authorization: `Bearer ${token}` } }).catch(e => console.error(e));
 
-                    // Check Follow Status
-                    axios.get(`/api/user/library/check/${slug}`, {
+                    axios.get(`http://localhost:5000/api/user/library/check/${slug}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     }).then(res => setIsFollowed(res.data.isFollowed)).catch(e => console.error(e));
                 }
@@ -117,7 +117,6 @@ const ChapterPage = () => {
         }
     };
 
-    // Xử lý Follow ngay tại trang đọc
     const handleToggleFollow = async () => {
         if (!user) {
             setShowLoginModal(true);
@@ -128,10 +127,10 @@ const ChapterPage = () => {
 
         try {
             if (isFollowed) {
-                await axios.delete(`/api/user/library/${slug}`, { headers });
+                await axios.delete(`http://localhost:5000/api/user/library/${slug}`, { headers });
                 setIsFollowed(false);
             } else {
-                await axios.post('/api/user/library', {
+                await axios.post('http://localhost:5000/api/user/library', {
                     comic_slug: slug,
                     comic_name: comicName,
                     comic_image: comicThumb,
@@ -139,12 +138,9 @@ const ChapterPage = () => {
                 }, { headers });
                 setIsFollowed(true);
             }
-        } catch (error) {
-            console.error("Lỗi follow:", error);
-        }
+        } catch (error) { console.error("Lỗi follow:", error); }
     };
 
-    // Xử lý gửi báo lỗi
     const handleSubmitReport = () => {
         if (!reportReason) return;
         console.log(`Báo lỗi: ${comicName} - Chương ${chapterName} - Lý do: ${reportReason}`);
@@ -159,7 +155,6 @@ const ChapterPage = () => {
     return (
         <div className="min-h-screen w-full bg-[#101022] font-display text-gray-300">
 
-            {/* Login Modal */}
             <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
             <div className="opacity-0 hover:opacity-100 transition-opacity fixed top-0 left-0 right-0 z-50">
@@ -197,37 +192,40 @@ const ChapterPage = () => {
 
                 {/* READER CONTENT */}
                 {!loading && !error && (
-                    <div className="flex flex-col bg-[#0a0a16] w-full select-none shadow-2xl min-h-screen" onContextMenu={(e) => e.preventDefault()}>
-                        {images.map((img, index) => (
-                            <img
-                                key={index}
-                                src={img.src}
-                                alt={`Trang ${index + 1}`}
-                                loading="lazy"
-                                className="w-full h-auto block mx-auto max-w-3xl"
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <div className="flex flex-col bg-[#0a0a16] w-full select-none shadow-2xl min-h-screen" onContextMenu={(e) => e.preventDefault()}>
+                            {images.map((img, index) => (
+                                <img
+                                    key={index}
+                                    src={img.src}
+                                    alt={`Trang ${index + 1}`}
+                                    loading="lazy"
+                                    className="w-full h-auto block mx-auto max-w-3xl"
+                                />
+                            ))}
+                        </div>
+
+                        {/* --- KHU VỰC BÌNH LUẬN (MỚI) --- */}
+                        <div className="max-w-4xl mx-auto px-4 mt-10 pb-20">
+                            {/* Truyền thêm chapterName để phân loại */}
+                            <CommentSection comicSlug={slug} chapterName={chapterName} />
+                        </div>
+                    </>
                 )}
 
                 {/* --- FLOATING CONTROL BAR --- */}
                 <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-center px-4">
                     <div className="bg-[#151525]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl p-1.5 flex items-center gap-1 sm:gap-3 max-w-lg w-full justify-between transition-transform hover:scale-[1.01]">
-
-                        {/* 1. Trang Chủ */}
+                        {/* (Giữ nguyên các nút điều hướng) */}
                         <Link to="/" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors" title="Trang chủ">
                             <RiHome4Line size={18} />
                         </Link>
-
-                        {/* 2. Nút Trước */}
                         <Link
                             to={prevChapter ? `/doc-truyen/${slug}/${prevChapter}` : '#'}
                             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors ${prevChapter ? 'text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
                         >
                             <RiArrowLeftSLine size={24} />
                         </Link>
-
-                        {/* 3. Chọn Chương */}
                         <div className="relative flex-1 max-w-[120px] sm:max-w-[140px]">
                             <select
                                 value={chapterName}
@@ -242,16 +240,12 @@ const ChapterPage = () => {
                             </select>
                             <RiListCheck className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" size={14} />
                         </div>
-
-                        {/* 4. Nút Sau */}
                         <Link
                             to={nextChapter ? `/doc-truyen/${slug}/${nextChapter}` : '#'}
                             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors ${nextChapter ? 'text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
                         >
                             <RiArrowRightSLine size={24} />
                         </Link>
-
-                        {/* 5. Theo Dõi (Đã gắn logic) */}
                         <button
                             onClick={handleToggleFollow}
                             className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors ${isFollowed ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-white/10'}`}
@@ -259,8 +253,6 @@ const ChapterPage = () => {
                         >
                             {isFollowed ? <RiHeart3Fill size={18} /> : <RiHeart3Line size={18} />}
                         </button>
-
-                        {/* 6. Báo Lỗi (Đã gắn logic) */}
                         <button
                             onClick={() => setShowReportModal(true)}
                             className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-500 hover:bg-yellow-500/10 transition-colors"
@@ -275,44 +267,26 @@ const ChapterPage = () => {
                 {showReportModal && (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
                         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowReportModal(false)}></div>
-
                         <div className="bg-[#1a1a2e] border border-white/10 rounded-xl p-6 w-full max-w-sm relative z-10 shadow-2xl animate-fade-in-up">
                             <button onClick={() => setShowReportModal(false)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
                                 <RiCloseLine size={24} />
                             </button>
-
                             {!reportSent ? (
                                 <>
-                                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                        <RiFlag2Line className="text-yellow-500" /> Báo Lỗi Chương Này
-                                    </h3>
+                                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><RiFlag2Line className="text-yellow-500" /> Báo Lỗi Chương Này</h3>
                                     <div className="space-y-2 mb-6">
                                         {['Ảnh bị lỗi / Không load được', 'Sai thứ tự chương', 'Chương bị trùng', 'Lỗi dịch thuật / Font chữ', 'Khác'].map((reason) => (
                                             <label key={reason} className="flex items-center gap-3 p-3 rounded-lg bg-[#252538] hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-primary/50">
-                                                <input
-                                                    type="radio"
-                                                    name="report"
-                                                    value={reason}
-                                                    onChange={(e) => setReportReason(e.target.value)}
-                                                    className="accent-primary"
-                                                />
+                                                <input type="radio" name="report" value={reason} onChange={(e) => setReportReason(e.target.value)} className="accent-primary" />
                                                 <span className="text-sm text-gray-300">{reason}</span>
                                             </label>
                                         ))}
                                     </div>
-                                    <button
-                                        onClick={handleSubmitReport}
-                                        disabled={!reportReason}
-                                        className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${reportReason ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-blue-600' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
-                                    >
-                                        Gửi Báo Cáo
-                                    </button>
+                                    <button onClick={handleSubmitReport} disabled={!reportReason} className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${reportReason ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-blue-600' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>Gửi Báo Cáo</button>
                                 </>
                             ) : (
                                 <div className="py-8 flex flex-col items-center text-center">
-                                    <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4 text-green-500">
-                                        <RiCheckLine size={32} />
-                                    </div>
+                                    <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mb-4 text-green-500"><RiCheckLine size={32} /></div>
                                     <h3 className="text-white font-bold text-lg">Đã Gửi Thành Công!</h3>
                                     <p className="text-gray-400 text-sm mt-2">Cảm ơn bạn đã giúp chúng tôi cải thiện chất lượng.</p>
                                 </div>
@@ -324,6 +298,7 @@ const ChapterPage = () => {
             </main>
 
             <div className="relative z-10 bg-[#0a0a16] border-t border-white/5">
+                <Footer />
             </div>
         </div>
     );

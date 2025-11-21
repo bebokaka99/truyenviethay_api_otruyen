@@ -11,7 +11,7 @@ import {
     RiMedalLine, RiLoader4Line, RiCalendarEventLine
 } from 'react-icons/ri';
 
-const API_URL = 'http://localhost:5000'; 
+const BACKEND_URL = 'http://192.168.1.154:5000';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -68,7 +68,7 @@ const ProfilePage = () => {
           setFullName(user.full_name || '');
           setRankStyle(user.rank_style || 'default'); 
           const avatarSrc = user.avatar 
-            ? (user.avatar.startsWith('http') ? user.avatar : `${API_URL}/${user.avatar}`)
+            ? (user.avatar.startsWith('http') ? user.avatar : `${BACKEND_URL}/${user.avatar}`)
             : `https://ui-avatars.com/api/?name=${user.username}&background=random`;
           setPreviewAvatar(avatarSrc);
       }

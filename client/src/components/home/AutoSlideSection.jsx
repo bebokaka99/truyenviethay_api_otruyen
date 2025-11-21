@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Import Link
+import { Link } from 'react-router-dom';
 import { RiArrowLeftSLine, RiArrowRightSLine } from 'react-icons/ri';
 
 const AutoSlideSection = ({ title, stories, domainAnh }) => {
@@ -28,9 +28,31 @@ const AutoSlideSection = ({ title, stories, domainAnh }) => {
   };
 
   const formatChapter = (truyen) => {
-    const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || '?';
+    const chapRaw = truyen.latest_chapter || (truyen.chaptersLatest && truyen.chaptersLatest[0]?.chapter_name) || 'Full';
     const chapNum = chapRaw.replace(/chapter/gi, '').replace(/chương/gi, '').trim();
-    return `Chương ${chapNum}`;
+    return isNaN(chapNum) && chapNum !== 'Full' ? `Chương ${chapNum}` : (chapNum === 'Full' ? 'Full' : `Chương ${chapNum}`);
+  };
+
+  // Thêm hàm tính thời gian
+  const timeAgo = (dateString) => {
+      if (!dateString) return '';
+      const now = new Date();
+      const date = new Date(dateString);
+      const seconds = Math.floor((now - date) / 1000);
+
+      let interval = Math.floor(seconds / 31536000);
+      if (interval >= 1) return interval + " năm trước";
+      interval = Math.floor(seconds / 2592000);
+      if (interval >= 1) return interval + " tháng trước";
+      interval = Math.floor(seconds / 604800);
+      if (interval >= 1) return interval + " tuần trước";
+      interval = Math.floor(seconds / 86400);
+      if (interval >= 1) return interval + " ngày trước";
+      interval = Math.floor(seconds / 3600);
+      if (interval >= 1) return interval + " giờ trước";
+      interval = Math.floor(seconds / 60);
+      if (interval >= 1) return interval + " phút trước";
+      return "Vừa xong";
   };
 
   if (!stories || stories.length === 0) return null;
@@ -56,7 +78,6 @@ const AutoSlideSection = ({ title, stories, domainAnh }) => {
           className="overflow-x-auto no-scrollbar flex items-stretch gap-5 pb-4"
         >
           {stories.map((truyen) => (
-            // --- SỬA THÀNH LINK ---
             <Link 
                 key={truyen._id} 
                 to={`/truyen-tranh/${truyen.slug}`}
@@ -70,11 +91,18 @@ const AutoSlideSection = ({ title, stories, domainAnh }) => {
                   loading="lazy"
                 />
                 
-                {/* Badge Chương */}
-                <div className="absolute top-2 right-2">
-                   <span className="bg-green-600 text-white text-[11px] font-bold px-2 py-1 rounded shadow-md">
-                      {formatChapter(truyen)}
-                   </span>
+                {/* --- BADGE GROUP (SỬA TẠI ĐÂY) --- */}
+                <div className="absolute top-2 right-2 flex flex-row items-center gap-1">
+                    
+                    {/* Thời gian (Đỏ - Trái) */}
+                    <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-md whitespace-nowrap">
+                       {timeAgo(truyen.updatedAt)}
+                    </span>
+
+                    {/* Chương (Xanh - Phải) */}
+                    <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md whitespace-nowrap">
+                       {formatChapter(truyen)}
+                    </span>
                 </div>
                 
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent"></div>
