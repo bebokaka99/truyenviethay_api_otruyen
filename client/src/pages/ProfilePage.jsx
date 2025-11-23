@@ -11,7 +11,7 @@ import {
     RiMedalLine, RiLoader4Line, RiCalendarEventLine
 } from 'react-icons/ri';
 
-const BACKEND_URL = 'http://192.168.1.154:5000';
+const BACKEND_URL = 'https://truyenviethay-backend.onrender.com';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();

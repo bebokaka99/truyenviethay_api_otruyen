@@ -16,10 +16,10 @@ import ProfilePage from './pages/ProfilePage';
 import HistoryPage from './pages/HistoryPage';
 import LibraryPage from './pages/LibraryPage';
 import RankingPage from './pages/RankingPage';
-import CategoryPage from './pages/CategoryPage';
 import ListPage from './pages/ListPage';
 import NotFoundPage from './pages/NotFoundPage'; 
 import AboutPage from './pages/AboutPage'; 
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 // --- ADMIN PAGES ---
 import DashboardPage from './pages/admin/DashboardPage';
@@ -48,11 +48,12 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/about" element={<AboutPage />} /> 
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         <Route path="/truyen-tranh/:slug" element={<ComicDetailPage />} />
         <Route path="/doc-truyen/:slug/:chapterName" element={<ChapterPage />} />
         
-        <Route path="/the-loai/:slug" element={<CategoryPage />} />
+        <Route path="/the-loai/:slug" element={<ListPage />} />
         <Route path="/danh-sach" element={<ListPage />} />
         <Route path="/xep-hang" element={<RankingPage />} />
         

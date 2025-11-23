@@ -10,7 +10,7 @@ import {
 } from 'react-icons/ri';
 
 // --- KHAI BÁO BIẾN NÀY ĐỂ SỬA LỖI ---
-const BACKEND_URL = 'http://192.168.1.154:5000';
+const BACKEND_URL = 'https://truyenviethay-backend.onrender.com';
 
 const CommentSection = ({ comicSlug, chapterName = null }) => {
     const { user } = useAuth();

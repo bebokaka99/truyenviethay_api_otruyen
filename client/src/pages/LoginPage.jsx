@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { RiUser3Line, RiLockPasswordLine, RiArrowLeftSLine, RiLoader4Line } from 'react-icons/ri';
 
 const LoginPage = () => {
-  const [email, setEmail] = useState('');
+  // Đổi tên state 'email' thành 'identifier' cho đúng ngữ nghĩa
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,9 +20,9 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // Gọi API Backend
+      // Gọi API Backend với field 'identifier'
       const response = await axios.post('/api/auth/login', {
-        email,
+        identifier, // Gửi email hoặc username vào đây
         password
       });
 
@@ -41,7 +42,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen w-full bg-[#0a0a16] font-display flex items-center justify-center relative overflow-hidden px-4">
       
-      {/* Background Blobs (Hiệu ứng nền) */}
+      {/* Background Blobs */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary/30 rounded-full blur-[100px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-600/30 rounded-full blur-[100px]"></div>
 
@@ -63,18 +64,19 @@ const LoginPage = () => {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* Email Input */}
+          
+          {/* Identifier Input (Email or Username) */}
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <RiUser3Line className="text-gray-500" />
             </div>
             <input
-              type="email"
+              type="text" // Đổi sang text để nhập username được
               required
-              placeholder="Email của bạn"
+              placeholder="Email hoặc Tên đăng nhập" // Placeholder rõ ràng
               className="w-full bg-[#0a0a16] border border-white/10 text-white text-sm rounded-lg block pl-10 p-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
             />
           </div>
 
@@ -94,7 +96,7 @@ const LoginPage = () => {
           </div>
 
           <div className="flex justify-end">
-            <a href="#" className="text-xs text-primary hover:text-blue-400 font-bold">Quên mật khẩu?</a>
+            <a href="/forgot-password" className="text-xs text-primary hover:text-blue-400 font-bold">Quên mật khẩu?</a>
           </div>
 
           <button

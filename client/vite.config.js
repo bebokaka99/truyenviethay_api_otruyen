@@ -8,9 +8,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.154:5000',
+        target: 'https://truyenviethay-backend.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
+        // 🔑 Dòng Đã Thêm: Loại bỏ tiền tố '/api' trước khi gửi đến Backend
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
     // Thêm dòng này để cho phép domain giả
