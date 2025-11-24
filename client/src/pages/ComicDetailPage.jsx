@@ -251,14 +251,28 @@ const ComicDetailPage = () => {
                  </div>
              </div>
              <div className="flex-1 text-center md:text-left flex flex-col gap-3 w-full">
+                {/* Tên truyện */}
                 <h1 className="text-2xl md:text-4xl font-black text-white leading-tight font-heading drop-shadow-md">{comic.name}</h1>
                 
-                <div className="flex flex-wrap justify-center md:justify-start gap-2 text-sm">
+                {/* --- CẬP NHẬT PHẦN HIỂN THỊ TÊN KHÁC --- */}
+                <p className="text-sm text-gray-400 line-clamp-2">
+                    <span className="font-bold text-primary">Tên khác: </span>
+                    {/* Nếu có origin_name và mảng không rỗng thì join lại, ngược lại thì hiện tên chính */}
+                    {comic.origin_name && comic.origin_name.length > 0 
+                        ? comic.origin_name.join(' | ') 
+                        : comic.name
+                    }
+                </p>
+                {/* ----------------------------------------- */}
+
+                {/* Thể loại */}
+                <div className="flex flex-wrap justify-center md:justify-start gap-2 text-sm mt-1">
                    {comic.category && comic.category.map((cat) => (
                        <Link key={cat.id} to={`/the-loai/${cat.slug}`} className="px-2.5 py-0.5 rounded border border-white/10 bg-[#252538] text-gray-400 text-xs font-bold hover:text-primary hover:border-primary transition-colors uppercase">{cat.name}</Link>
                    ))}
                 </div>
                 
+                {/* Tác giả và Ngày cập nhật */}
                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-8 text-sm mt-2 bg-[#1a1a2e]/80 backdrop-blur-sm p-3 rounded-lg border border-white/5 w-fit mx-auto md:mx-0">
                    <div className="flex items-center gap-2"><RiUser3Line className="text-primary" /><span className="text-gray-300 font-bold text-xs md:text-sm">{authors}</span></div>
                    <div className="w-px h-3 bg-white/20 hidden md:block"></div>
