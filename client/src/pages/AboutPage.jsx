@@ -1,24 +1,40 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/layouts/Header';
 import Footer from '../components/layouts/Footer';
-import { 
-  RiRocketLine, RiUserHeartLine, RiBookOpenLine, 
-  RiGlobalLine, RiShieldCheckLine, RiFlashlightLine 
+import { useAuth } from '../contexts/AuthContext';
+import Toast from '../components/common/Toast';
+// 1. XÓA RiCoffeeLine ở dòng này
+import {
+  RiRocketLine, RiUserHeartLine, RiBookOpenLine,
+  RiGlobalLine, RiShieldCheckLine, RiFlashlightLine,
+  RiSmartphoneLine, RiAppleFill, RiAndroidFill
 } from 'react-icons/ri';
+// 2. THÊM dòng này
+import { FaCoffee } from 'react-icons/fa';
 
 const AboutPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [toast, setToast] = useState(null);
+
+  const handleAuthAction = (path) => {
+      if (user) {
+          setToast({ message: 'Bạn đã đăng nhập rồi nhé!', type: 'info' });
+      } else {
+          navigate(path);
+      }
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#0a0a16] font-display text-gray-300 flex flex-col">
       <Header />
       
       <main className="flex-grow">
         
-        {/* --- HERO SECTION --- */}
+        {/* --- HERO SECTION (Giữ nguyên) --- */}
         <div className="relative py-20 px-6 text-center overflow-hidden">
-            {/* Background Effect */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
-            
             <div className="relative z-10 max-w-3xl mx-auto animate-fade-in-up">
                 <h1 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight">
                     Khám Phá Thế Giới <br/>
@@ -33,7 +49,7 @@ const AboutPage = () => {
             </div>
         </div>
 
-        {/* --- STATS SECTION --- */}
+        {/* --- STATS SECTION (Giữ nguyên) --- */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
@@ -53,7 +69,7 @@ const AboutPage = () => {
             </div>
         </div>
 
-        {/* --- MISSION & VISION --- */}
+        {/* --- MISSION & VISION (Giữ nguyên) --- */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 <div className="relative">
@@ -106,7 +122,80 @@ const AboutPage = () => {
             </div>
         </div>
 
-        {/* --- CALL TO ACTION --- */}
+        {/* --- PWA INSTALL GUIDE (Giữ nguyên) --- */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-24">
+            <div className="bg-[#1a1a2e] border border-white/5 rounded-3xl p-8 md:p-12 relative overflow-hidden">
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none"></div>
+                <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-bold mb-6">
+                            <RiSmartphoneLine /> Ứng Dụng Di Động
+                        </div>
+                        <h2 className="text-3xl font-black text-white mb-6 leading-tight">
+                            Trải Nghiệm Tốt Nhất Trên Điện Thoại Của Bạn
+                        </h2>
+                        <p className="text-gray-400 leading-relaxed mb-8">
+                            TruyenVietHay hỗ trợ cài đặt trực tiếp lên màn hình chính điện thoại (PWA). Không cần tải từ App Store/CH Play, không tốn dung lượng, đọc truyện full màn hình cực đã.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-6">
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white flex-shrink-0"><RiAppleFill size={20} /></div>
+                                <div>
+                                    <h4 className="text-white font-bold mb-1">iOS (iPhone/iPad)</h4>
+                                    <p className="text-xs text-gray-500">Mở Safari → Bấm nút Chia sẻ <span className="inline-block border border-gray-600 rounded px-1">↑</span> → Chọn "Thêm vào Màn hình chính".</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white flex-shrink-0"><RiAndroidFill size={20} /></div>
+                                <div>
+                                    <h4 className="text-white font-bold mb-1">Android</h4>
+                                    <p className="text-xs text-gray-500">Mở Chrome → Bấm menu <span className="inline-block border border-gray-600 rounded px-1">⋮</span> → Chọn "Cài đặt ứng dụng" hoặc "Thêm vào Màn hình chính".</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="relative h-[400px] bg-[#101022] rounded-[2.5rem] border-8 border-[#252538] shadow-2xl overflow-hidden transform rotate-3 hover:rotate-0 transition-all duration-500">
+                        <img src="/logo.png" alt="App Mockup" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 opacity-50" />
+                        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-primary/20 to-transparent"></div>
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-6 bg-[#252538] rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* --- DONATE SECTION --- */}
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 mb-24 text-center">
+             <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/10 text-yellow-500 rounded-full text-sm font-bold mb-6">
+                {/* 3. THAY THẾ RiCoffeeLine bằng FaCoffee */}
+                <FaCoffee /> Ủng Hộ Dự Án
+            </div>
+            <h2 className="text-3xl font-black text-white mb-6">
+                Tiếp Sức Cho Đam Mê
+            </h2>
+            <p className="text-gray-400 leading-relaxed mb-8">
+                TruyenVietHay là một dự án phi lợi nhuận được duy trì bởi niềm đam mê. Mọi sự ủng hộ của bạn sẽ được dùng để chi trả phí server, nâng cấp hệ thống và mua thêm cà phê cho đội ngũ phát triển. ☕
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                <div className="bg-[#1a1a2e] border border-white/5 rounded-2xl p-6 hover:border-pink-500/50 transition-colors group relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <img src="https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png" alt="Momo" className="h-10 mx-auto mb-4 filter grayscale group-hover:grayscale-0 transition-all" />
+                    <h4 className="text-white font-bold mb-2">Ví MoMo</h4>
+                    <p className="text-xl text-pink-500 font-black">0941434669</p>
+                    <p className="text-sm text-gray-500">Trần Ngọc Quỳnh</p>
+                </div>
+                
+                <div className="bg-[#1a1a2e] border border-white/5 rounded-2xl p-6 hover:border-blue-500/50 transition-colors group relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <img src="/mbbank.png" alt="Bank" className="h-10 mx-auto mb-4 filter grayscale group-hover:grayscale-0 transition-all" />
+                    <h4 className="text-white font-bold mb-2">Ngân Hàng MB Bank</h4>
+                    <p className="text-xl text-blue-500 font-black">03092004002211</p>
+                    <p className="text-sm text-gray-500">Trần Ngọc Quỳnh</p>
+                </div>
+            </div>
+        </div>
+
+        {/* --- CALL TO ACTION (Giữ nguyên logic đã sửa) --- */}
         <div className="max-w-5xl mx-auto px-4 mb-20">
             <div className="bg-gradient-to-r from-[#1a1a2e] to-[#252538] rounded-3xl p-10 text-center border border-white/10 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none"></div>
@@ -116,18 +205,20 @@ const AboutPage = () => {
                     Đăng ký tài khoản ngay hôm nay để lưu tủ truyện, nhận thông báo chương mới và tham gia cộng đồng.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4 relative z-10">
-                    <Link to="/register" className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors">
+                    <button onClick={() => handleAuthAction('/register')} className="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors">
                         Đăng Ký Miễn Phí
-                    </Link>
-                    <Link to="/login" className="px-8 py-3 bg-transparent border border-white/20 text-white font-bold rounded-full hover:bg-white/10 transition-colors">
+                    </button>
+                    <button onClick={() => handleAuthAction('/login')} className="px-8 py-3 bg-transparent border border-white/20 text-white font-bold rounded-full hover:bg-white/10 transition-colors">
                         Đăng Nhập
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>
 
       </main>
       <Footer />
+      
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };

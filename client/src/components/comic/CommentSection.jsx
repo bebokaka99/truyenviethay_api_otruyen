@@ -6,10 +6,10 @@ import LevelBadge from '../common/LevelBadge';
 import { 
     RiSendPlaneFill, RiChat1Line, RiTimeLine, 
     RiThumbUpLine, RiThumbUpFill, RiReplyFill, 
-    RiLoader4Line // Đã thêm import bị thiếu
+    RiLoader4Line 
 } from 'react-icons/ri';
 
-// --- KHAI BÁO BIẾN NÀY ĐỂ SỬA LỖI ---
+// Thay thế bằng URL backend thực tế (nếu cần)
 const BACKEND_URL = 'https://truyenviethay-backend.onrender.com';
 
 const CommentSection = ({ comicSlug, chapterName = null }) => {
@@ -24,7 +24,7 @@ const CommentSection = ({ comicSlug, chapterName = null }) => {
     const getAvatar = (path) => {
         if (!path) return `https://ui-avatars.com/api/?background=random`;
         if (path.startsWith('http')) return path;
-        return `${BACKEND_URL}/${path}`; // Sử dụng biến API_URL
+        return `${BACKEND_URL}/${path}`; // Sử dụng biến BACKEND_URL
     };
 
     const timeAgo = (dateString) => {

@@ -45,7 +45,7 @@ const HistoryPage = () => {
         );
 
         setComics(uniqueHistoryArray);
-        // --- ✅ KẾT THÚC LOGIC LỌC ---
+        
 
       } catch (error) {
         console.error("Lỗi tải lịch sử:", error);

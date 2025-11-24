@@ -17,6 +17,7 @@ import HistoryPage from './pages/HistoryPage';
 import LibraryPage from './pages/LibraryPage';
 import RankingPage from './pages/RankingPage';
 import ListPage from './pages/ListPage';
+import SearchPage from './pages/SearchPage'; 
 import NotFoundPage from './pages/NotFoundPage'; 
 import AboutPage from './pages/AboutPage'; 
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -55,6 +56,7 @@ function App() {
         
         <Route path="/the-loai/:slug" element={<ListPage />} />
         <Route path="/danh-sach" element={<ListPage />} />
+        <Route path="/tim-kiem" element={<SearchPage />} />
         <Route path="/xep-hang" element={<RankingPage />} />
         
         {/* --- AUTHENTICATED ROUTES (Không cần ProtectedRoute vì logic đã được handle bên trong từng Page) --- */}
