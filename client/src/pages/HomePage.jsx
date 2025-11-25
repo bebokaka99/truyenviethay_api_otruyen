@@ -5,14 +5,13 @@ import Footer from '../components/layouts/Footer';
 import HeroSection from '../components/home/HeroSection'; 
 import AutoSlideSection from '../components/home/AutoSlideSection';
 import HugeGridSection from '../components/home/HugeGridSection';
-import SkeletonCard from '../components/common/SkeletonCard'; // <--- IMPORT SKELETON
+import SkeletonCard from '../components/common/SkeletonCard'; 
 import { RiTrophyFill } from 'react-icons/ri';
 
 // Helper random số trang từ min đến max
 const getRandomPage = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 const HomePage = () => {
-  // --- STATE ---
   const [newUpdateStories, setNewUpdateStories] = useState([]); 
   const [hotStories, setHotStories] = useState([]); 
   const [topRatedStories, setTopRatedStories] = useState([]); 

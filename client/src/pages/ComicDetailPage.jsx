@@ -7,7 +7,7 @@ import Footer from '../components/layouts/Footer';
 import LoginModal from '../components/common/LoginModal';
 import CommentSection from '../components/comic/CommentSection';
 import StarRating from '../components/common/StarRating';
-import Toast from '../components/common/Toast';
+import Toast from '../components/common/Toast'
 import SEO from '../components/common/SEO';
 import { 
   RiBookOpenLine, RiBookmarkLine, RiUser3Line, RiTimeLine, 
@@ -15,6 +15,9 @@ import {
   RiEyeFill, RiBookmarkFill, RiPlayCircleLine, 
   RiFlag2Line, RiCloseLine, RiCheckLine
 } from 'react-icons/ri';
+
+// URL Backend
+const BACKEND_URL = 'https://truyenviethay-backend.onrender.com';
 
 const ComicDetailPage = () => {
   const { slug } = useParams();
@@ -51,7 +54,7 @@ const ComicDetailPage = () => {
       try {
         // Gọi API Rating song song để tiết kiệm thời gian
         const userId = user ? user.id : '';
-        const ratingPromise = axios.get(`/api/rating/comic/${slug}?userId=${userId}`);
+        const ratingPromise = axios.get(`${BACKEND_URL}/api/rating/comic/${slug}?userId=${userId}`);
         const comicPromise = axios.get(`https://otruyenapi.com/v1/api/truyen-tranh/${slug}`);
 
         const [ratingRes, comicRes] = await Promise.all([ratingPromise, comicPromise]);
@@ -79,8 +82,8 @@ const ComicDetailPage = () => {
             const headers = { Authorization: `Bearer ${token}` };
             
             const [resFollow, resHistory] = await Promise.all([
-                 axios.get(`/api/user/library/check/${slug}`, { headers }),
-                 axios.get(`/api/user/history/check/${slug}`, { headers })
+                 axios.get(`${BACKEND_URL}/api/user/library/check/${slug}`, { headers }),
+                 axios.get(`${BACKEND_URL}/api/user/history/check/${slug}`, { headers })
             ]);
 
             setIsFollowed(resFollow.data.isFollowed);
@@ -120,11 +123,11 @@ const ComicDetailPage = () => {
 
       try {
           if (isFollowed) {
-              await axios.delete(`/api/user/library/${slug}`, { headers });
+              await axios.delete(`${BACKEND_URL}/api/user/library/${slug}`, { headers });
               setIsFollowed(false);
               showToast("Đã bỏ theo dõi truyện!", "error");
           } else {
-              await axios.post('/api/user/library', {
+              await axios.post(`${BACKEND_URL}/api/user/library`, {
                   comic_slug: slug,
                   comic_name: comic.name,
                   comic_image: `${domainAnh}/uploads/comics/${comic.thumb_url}`,
@@ -139,22 +142,34 @@ const ComicDetailPage = () => {
       finally { setFollowLoading(false); }
   };
 
+  // --- HÀM ĐÁNH GIÁ (ĐÃ SỬA LỖI CHO ANDROID) ---
   const handleRate = async (score) => {
       if (!user) { setShowLoginModal(true); return; }
+
+      // --- THÊM ĐOẠN KIỂM TRA NÀY ---
+      // Nếu điểm nhỏ hơn 0.5 (ví dụ là 0 do lỗi cảm ứng trên Android), thì chặn lại không gửi lên server.
+      if (score < 0.5 || isNaN(score)) {
+          // Không làm gì cả, hoặc có thể hiện toast cảnh báo nhẹ
+          // showToast("Vui lòng chọn số sao hợp lệ", "warning");
+          return;
+      }
+      // ------------------------------
+
       try {
           const token = localStorage.getItem('user_token');
-          const res = await axios.post('/api/rating', { comic_slug: slug, score: score }, { headers: { Authorization: `Bearer ${token}` } });
+          const res = await axios.post(`${BACKEND_URL}/api/rating`, { comic_slug: slug, score: score }, { headers: { Authorization: `Bearer ${token}` } });
           setRatingInfo(prev => ({ ...prev, average: res.data.average, total: res.data.total, user_score: score }));
           showToast(`Đánh giá ${score} sao thành công!`, "success");
       } catch (e) { showToast(e.response?.data?.message || "Lỗi khi đánh giá", "error"); }
   };
+  // --------------------------------------------
 
   const handleSubmitReport = async () => {
       if (!reportReason) return;
       if (!user) { setShowLoginModal(true); return; }
       try {
           const token = localStorage.getItem('user_token');
-          await axios.post('/api/reports', { comic_slug: slug, chapter_name: 'Trang Chi Tiết', reason: reportReason }, { headers: { Authorization: `Bearer ${token}` } });
+          await axios.post(`${BACKEND_URL}/api/reports`, { comic_slug: slug, chapter_name: 'Trang Chi Tiết', reason: reportReason }, { headers: { Authorization: `Bearer ${token}` } });
           setReportSent(true);
           setTimeout(() => { setReportSent(false); setShowReportModal(false); setReportReason(''); showToast("Đã gửi báo lỗi thành công!", "success"); }, 2000);
       } catch (error) { showToast("Gửi thất bại. Vui lòng thử lại!", "error"); }
@@ -254,10 +269,9 @@ const ComicDetailPage = () => {
                 {/* Tên truyện */}
                 <h1 className="text-2xl md:text-4xl font-black text-white leading-tight font-heading drop-shadow-md">{comic.name}</h1>
                 
-                {/* --- CẬP NHẬT PHẦN HIỂN THỊ TÊN KHÁC --- */}
+                {/* --- HIỂN THỊ TÊN KHÁC (NẾU CÓ) --- */}
                 <p className="text-sm text-gray-400 line-clamp-2">
                     <span className="font-bold text-primary">Tên khác: </span>
-                    {/* Nếu có origin_name và mảng không rỗng thì join lại, ngược lại thì hiện tên chính */}
                     {comic.origin_name && comic.origin_name.length > 0 
                         ? comic.origin_name.join(' | ') 
                         : comic.name
@@ -356,6 +370,7 @@ const ComicDetailPage = () => {
                  </section>
 
                  <section>
+                     {/* TRUYỀN slug VÀO ĐÂY */}
                      <CommentSection comicSlug={slug} />
                  </section>
               </div>

@@ -8,81 +8,117 @@ import {
     RiFlag2Line, RiChat1Line, RiUser3Line,
     RiTaskLine, RiAddLine, RiEditLine,
     RiBookmarkLine, RiGlobalLine, RiDownloadCloud2Line,
-    RiBarChartFill, RiSave3Line
+    RiBarChartFill, RiSave3Line, RiSpamLine, RiAdminLine, RiUserStarLine, RiStarFill, RiTimeLine, RiLoader4Line
 } from 'react-icons/ri';
 
+// --- ĐỔI URL BACKEND CỦA BẠN NẾU CẦN ---
+const BACKEND_URL = 'https://truyenviethay-backend.onrender.com';
+
 const DashboardPage = () => {
-    const [activeTab, setActiveTab] = useState('dashboard');
+    // --- STATES QUẢN LÝ TAB VÀ DỮ LIỆU ---
+    // Thêm tab 'comment_reports' vào danh sách activeTab
+    const [activeTab, setActiveTab] = useState('dashboard'); 
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // --- State chung ---
+    // --- STATES CHO LỌC VÀ TÌM KIẾM ---
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
 
-    // --- Modals ---
+    // --- STATES CHO PHÂN TRANG (TAB USERS) ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const itemsPerPage = 10;
+
+    // --- STATES CHO CÁC MODAL CŨ ---
     const [showBanModal, setShowBanModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [banDays, setBanDays] = useState(1);
-
     const [showQuestModal, setShowQuestModal] = useState(false);
     const [isEditingQuest, setIsEditingQuest] = useState(false);
     const [questForm, setQuestForm] = useState({ id: null, quest_key: '', name: '', description: '', target_count: 1, reward_exp: 10, type: 'daily', action_type: 'read' });
 
-    // --- COMIC MANAGEMENT ---
+    // --- STATES CHO QUẢN LÝ TRUYỆN ---
     const [managedComics, setManagedComics] = useState([]);
     const [comicForm, setComicForm] = useState({ slug: '', name: '', is_hidden: false, is_recommended: false });
     const [externalSearch, setExternalSearch] = useState('');
     const [externalResults, setExternalResults] = useState([]);
     const [searchingExternal, setSearchingExternal] = useState(false);
 
-    // --- FETCH DATA ---
+    // ==========================================
+    // --- HÀM FETCH DỮ LIỆU TỪ API ---
+    // ==========================================
     const fetchData = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('user_token');
-            const headers = { Authorization: `Bearer ${token}` };
+            // Tạo instance axios riêng với base URL và token để code gọn hơn
+            const api = axios.create({
+                baseURL: BACKEND_URL,
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
             let res;
 
-            if (activeTab === 'users') res = await axios.get('/api/user/admin/users', { headers });
-            else if (activeTab === 'reports') res = await axios.get('/api/reports/admin/all', { headers });
-            else if (activeTab === 'comments') res = await axios.get('/api/comments/admin/all', { headers });
-            else if (activeTab === 'quests') res = await axios.get('/api/quests/admin/all', { headers });
-            else if (activeTab === 'comics') res = await axios.get('/api/user/admin/comics', { headers });
+            if (activeTab === 'users') {
+                res = await api.get(`/api/user/admin/users?page=${currentPage}&limit=${itemsPerPage}`);
+                setData(res.data.data);
+                setTotalPages(res.data.pagination.totalPages);
+            }
+            else if (activeTab === 'reports') res = await api.get('/api/reports/admin/all');
+            // --- GỌI API MỚI CHO TAB REPORT COMMENT ---
+            else if (activeTab === 'comment_reports') res = await api.get('/api/reports/comments/admin/all');
+            else if (activeTab === 'comments') res = await api.get('/api/comments/admin/all');
+            else if (activeTab === 'quests') res = await api.get('/api/quests/admin/all');
+            else if (activeTab === 'comics') res = await api.get('/api/user/admin/comics');
 
+            // Cập nhật state dữ liệu tương ứng
             if (activeTab === 'comics') setManagedComics(res.data);
-            else if (activeTab !== 'dashboard') setData(res.data);
+            else if (activeTab !== 'dashboard' && activeTab !== 'users') setData(res.data);
 
         } catch (error) {
             console.error("Lỗi load data:", error);
-            if (error.response?.status === 403) alert("Bạn không có quyền truy cập!");
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                alert("Phiên đăng nhập hết hạn hoặc bạn không có quyền admin.");
+                // Có thể redirect về trang login ở đây
+            } else {
+                // alert("Lỗi kết nối server. Vui lòng thử lại."); // Tạm tắt alert để đỡ phiền
+            }
         } finally {
             setLoading(false);
         }
     };
 
+    // Gọi fetchData khi tab thay đổi hoặc chuyển trang (users)
     useEffect(() => {
         if (activeTab !== 'dashboard') fetchData();
+        // Reset các bộ lọc khi chuyển tab
         setSearchTerm('');
         setExternalResults([]);
         setExternalSearch('');
-    }, [activeTab]);
+        if (activeTab !== 'users') setCurrentPage(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, currentPage]);
 
-    // --- LOGIC LỌC ---
+    // ==========================================
+    // --- LOGIC LỌC DỮ LIỆU CLIENT-SIDE ---
+    // ==========================================
     const filteredData = useMemo(() => {
         if (!data || activeTab === 'dashboard') return [];
+        // Tab users đã lọc server-side, trả về nguyên gốc
+        if (activeTab === 'users') return data;
+
         const lowerSearch = searchTerm.toLowerCase();
 
         return data.filter(item => {
-            if (activeTab === 'users') {
-                const matchSearch = item.username.toLowerCase().includes(lowerSearch) || item.email.toLowerCase().includes(lowerSearch);
-                const matchRole = filterRole === 'all' || item.role === filterRole;
-                const matchStatus = filterStatus === 'all' || item.status === filterStatus;
-                return matchSearch && matchRole && matchStatus;
-            }
-            else if (activeTab === 'reports') {
+             if (activeTab === 'reports') {
                 return item.comic_slug?.toLowerCase().includes(lowerSearch) || item.reason?.toLowerCase().includes(lowerSearch);
+            }
+             // --- THÊM LOGIC LỌC CHO COMMENT REPORTS ---
+            else if (activeTab === 'comment_reports') {
+                // Tìm kiếm theo nội dung comment, tên người báo cáo, hoặc lý do
+                return item.comment_content?.toLowerCase().includes(lowerSearch) || item.reporter_name?.toLowerCase().includes(lowerSearch) || item.reason?.toLowerCase().includes(lowerSearch);
             }
             else if (activeTab === 'comments') {
                 return item.content?.toLowerCase().includes(lowerSearch) || item.username?.toLowerCase().includes(lowerSearch);
@@ -92,300 +128,401 @@ const DashboardPage = () => {
             }
             return false;
         });
-    }, [data, searchTerm, filterRole, filterStatus, activeTab]);
+    }, [data, searchTerm, activeTab]);
 
-    // --- ACTIONS ---
-    const handleDeleteUser = async (id) => { if (!window.confirm('Xóa user?')) return; try { const token = localStorage.getItem('user_token'); await axios.delete(`/api/user/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setData(prev => prev.filter(u => u.id !== id)); } catch (e) { alert('Lỗi xóa'); } };
-    const handleWarn = async (id) => { try { const token = localStorage.getItem('user_token'); await axios.post(`/api/user/admin/users/${id}/warn`, {}, { headers: { Authorization: `Bearer ${token}` } }); alert('Đã cảnh báo'); fetchData(); } catch (e) { alert('Lỗi'); } };
-    const handleUnban = async (id) => { if (!window.confirm('Mở khóa?')) return; try { const token = localStorage.getItem('user_token'); await axios.post(`/api/user/admin/users/${id}/unban`, {}, { headers: { Authorization: `Bearer ${token}` } }); alert('Đã mở khóa!'); fetchData(); } catch (e) { alert('Lỗi'); } }
 
+    // ==========================================
+    // --- CÁC HÀM XỬ LÝ HÀNH ĐỘNG (ACTIONS) ---
+    // ==========================================
+    
+    // --- HELPER ĐỂ GỌI API NHANH HƠN ---
+    const callApi = async (method, endpoint, body = null) => {
+        const token = localStorage.getItem('user_token');
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const url = `${BACKEND_URL}${endpoint}`;
+        try {
+            if (method === 'post') return await axios.post(url, body, config);
+            if (method === 'put') return await axios.put(url, body, config);
+            if (method === 'delete') return await axios.delete(url, config);
+        } catch (error) {
+            throw error; // Ném lỗi ra để hàm gọi xử lý
+        }
+    };
+
+    // --- ACTIONS CŨ (USER, REPORT, COMMENT, QUEST, COMIC) ---
+    const handleDeleteUser = async (id) => { if (!window.confirm('Xóa user này? Hành động không thể hoàn tác!')) return; try { await callApi('delete', `/api/user/admin/users/${id}`); setData(prev => prev.filter(u => u.id !== id)); alert('Đã xóa user.'); } catch (e) { alert(e.response?.data?.message || 'Lỗi xóa user.'); } };
+    const handleWarn = async (id) => { try { await callApi('post', `/api/user/admin/users/${id}/warn`); alert('Đã gửi cảnh báo.'); fetchData(); } catch (e) { alert('Lỗi gửi cảnh báo.'); } };
+    const handleUnban = async (id) => { if (!window.confirm('Mở khóa tài khoản này?')) return; try { await callApi('post', `/api/user/admin/users/${id}/unban`); alert('Đã mở khóa!'); fetchData(); } catch (e) { alert('Lỗi mở khóa.'); } }
     const openBanModal = (user) => { setSelectedUser(user); setShowBanModal(true); };
-    const confirmBan = async () => { if (!selectedUser) return; try { const token = localStorage.getItem('user_token'); await axios.post(`/api/user/admin/users/${selectedUser.id}/ban`, { days: parseInt(banDays) }, { headers: { Authorization: `Bearer ${token}` } }); alert('Đã chặn!'); setShowBanModal(false); fetchData(); } catch (e) { alert('Lỗi'); } };
-
-    const handleResolveReport = async (id) => { if (!window.confirm('Đã xử lý xong?')) return; try { const token = localStorage.getItem('user_token'); await axios.delete(`/api/reports/admin/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setData(prev => prev.filter(r => r.id !== id)); } catch (e) { alert('Lỗi server'); } };
-    const handleDeleteComment = async (id) => { if (!window.confirm('Xóa bình luận?')) return; try { const token = localStorage.getItem('user_token'); await axios.delete(`/api/comments/admin/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setData(prev => prev.filter(c => c.id !== id)); } catch (e) { alert('Lỗi'); } };
-    const handleDeleteQuest = async (id) => { if (!window.confirm('Xóa nhiệm vụ?')) return; try { const token = localStorage.getItem('user_token'); await axios.delete(`/api/quests/admin/${id}`, { headers: { Authorization: `Bearer ${token}` } }); setData(prev => prev.filter(q => q.id !== id)); } catch (e) { alert('Lỗi'); } };
-
-    // Quest Actions
+    const confirmBan = async () => { if (!selectedUser) return; try { await callApi('post', `/api/user/admin/users/${selectedUser.id}/ban`, { days: parseInt(banDays) }); alert(`Đã chặn user ${selectedUser.username}.`); setShowBanModal(false); fetchData(); } catch (e) { alert('Lỗi khi chặn user.'); } };
+    const handleResolveReport = async (id) => { if (!window.confirm('Xác nhận đã xử lý xong báo cáo này?')) return; try { await callApi('delete', `/api/reports/admin/${id}`); setData(prev => prev.filter(r => r.id !== id)); } catch (e) { alert('Lỗi server.'); } };
+    const handleDeleteComment = async (id) => { if (!window.confirm('Xóa bình luận này?')) return; try { await callApi('delete', `/api/comments/admin/${id}`); setData(prev => prev.filter(c => c.id !== id)); } catch (e) { alert('Lỗi xóa bình luận.'); } };
+    const handleDeleteQuest = async (id) => { if (!window.confirm('Xóa nhiệm vụ này?')) return; try { await callApi('delete', `/api/quests/admin/${id}`); setData(prev => prev.filter(q => q.id !== id)); } catch (e) { alert('Lỗi xóa nhiệm vụ.'); } };
     const openQuestModal = (quest = null) => { if (quest) { setQuestForm(quest); setIsEditingQuest(true); } else { setQuestForm({ id: null, quest_key: '', name: '', description: '', target_count: 1, reward_exp: 10, type: 'daily', action_type: 'read' }); setIsEditingQuest(false); } setShowQuestModal(true); };
-    const handleSubmitQuest = async (e) => { e.preventDefault(); try { const token = localStorage.getItem('user_token'); const headers = { Authorization: `Bearer ${token}` }; if (isEditingQuest) await axios.put(`/api/quests/admin/${questForm.id}`, questForm, { headers }); else await axios.post('/api/quests/admin', questForm, { headers }); setShowQuestModal(false); fetchData(); alert('Thành công!'); } catch (error) { alert(error.response?.data?.message || 'Lỗi'); } };
-
-    // Comic Actions
-    const handleSearchOtruyen = async (e) => { e.preventDefault(); if (!externalSearch.trim()) return; setSearchingExternal(true); try { const res = await axios.get(`https://otruyenapi.com/v1/api/tim-kiem?keyword=${externalSearch}`); setExternalResults(res.data.data.items); } catch (error) { console.error(error); alert("Lỗi kết nối Otruyen"); } finally { setSearchingExternal(false); } };
+    const handleSubmitQuest = async (e) => { e.preventDefault(); try { if (isEditingQuest) await callApi('put', `/api/quests/admin/${questForm.id}`, questForm); else await callApi('post', '/api/quests/admin', questForm); setShowQuestModal(false); fetchData(); alert('Lưu nhiệm vụ thành công!'); } catch (error) { alert(error.response?.data?.message || 'Lỗi lưu nhiệm vụ.'); } };
+    const handleSearchOtruyen = async (e) => { e.preventDefault(); if (!externalSearch.trim()) return; setSearchingExternal(true); try { const res = await axios.get(`https://otruyenapi.com/v1/api/tim-kiem?keyword=${externalSearch}`); setExternalResults(res.data.data.items); } catch (error) { console.error(error); alert("Lỗi kết nối Otruyen API."); } finally { setSearchingExternal(false); } };
     const selectExternalComic = (comic) => { setComicForm({ slug: comic.slug, name: comic.name, is_hidden: false, is_recommended: false }); setExternalResults([]); setExternalSearch(''); };
-    const handleUpdateComic = async (e) => { e.preventDefault(); if (!comicForm.slug) return alert("Chưa nhập Slug!"); try { const token = localStorage.getItem('user_token'); await axios.post('/api/user/admin/comics', comicForm, { headers: { Authorization: `Bearer ${token}` } }); alert("Cập nhật thành công!"); fetchData(); setComicForm({ slug: '', name: '', is_hidden: false, is_recommended: false }); } catch (error) { alert("Lỗi cập nhật"); } };
+    const handleUpdateComic = async (e) => { e.preventDefault(); if (!comicForm.slug) return alert("Chưa nhập Slug!"); try { await callApi('post', '/api/user/admin/comics', comicForm); alert("Cập nhật trạng thái truyện thành công!"); fetchData(); setComicForm({ slug: '', name: '', is_hidden: false, is_recommended: false }); } catch (error) { alert("Lỗi cập nhật."); } };
     const editComic = (comic) => { setComicForm({ slug: comic.slug, name: comic.name, is_hidden: comic.is_hidden === 1, is_recommended: comic.is_recommended === 1 }); };
-    const clearFilters = () => { setSearchTerm(''); setFilterRole('all'); setFilterStatus('all'); };
+    const clearFilters = () => { setSearchTerm(''); setFilterRole('all'); setFilterStatus('all'); fetchData(); }; // Gọi lại fetchData để reset filter server-side
 
+
+    // ==========================================
+    // --- CÁC HÀM MỚI (CHANGE ROLE & COMMENT REPORT) ---
+    // ==========================================
+
+    // 1. Hàm thay đổi Role
+    const handleChangeRole = async (userId, newRole, currentRole) => {
+        if (newRole === currentRole) return; // Không làm gì nếu chọn role hiện tại
+        const roleName = newRole === 'admin' ? 'QUẢN TRỊ VIÊN (ADMIN)' : 'NGƯỜI DÙNG (USER)';
+        if (!window.confirm(`Bạn có chắc chắn muốn thay đổi quyền của người dùng này thành ${roleName}?`)) {
+            fetchData(); // Load lại data để reset dropdown về giá trị cũ nếu hủy
+            return;
+        }
+        try {
+            await callApi('put', `/api/user/admin/users/${userId}/role`, { newRole });
+            alert(`Thành công! Đã thay đổi quyền thành ${newRole.toUpperCase()}.`);
+            fetchData(); // Load lại data để cập nhật UI
+        } catch (error) {
+            alert(error.response?.data?.message || 'Lỗi khi thay đổi quyền.');
+            fetchData(); // Load lại data để reset dropdown
+        }
+    };
+
+    // 2. Hàm xử lý báo cáo bình luận
+    const handleResolveCommentReport = async (reportId, action) => {
+        const confirmMsg = action === 'delete_comment' 
+            ? 'Bạn có chắc muốn XÓA bình luận này và đóng báo cáo? Hành động này không thể hoàn tác.' 
+            : 'Bạn có chắc muốn BỎ QUA báo cáo này?';
+            
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            await callApi('post', `/api/reports/comments/admin/${reportId}/resolve`, { action });
+            // Xóa item khỏi danh sách local để update UI nhanh mà không cần load lại toàn bộ
+            setData(prev => prev.filter(r => r.id !== reportId));
+            alert(action === 'delete_comment' ? 'Đã xóa bình luận và đóng báo cáo.' : 'Đã bỏ qua báo cáo.');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Lỗi server khi xử lý báo cáo.');
+        }
+    };
+
+    // --- Lấy ID của admin hiện tại từ token để disable nút đổi role của chính mình ---
+    const currentAdminId = useMemo(() => {
+        try {
+            const token = localStorage.getItem('user_token');
+            if (token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(window.atob(base64)).id;
+            }
+            return null;
+        } catch (e) { return null; }
+    }, []);
+
+
+    // ==========================================
+    // --- GIAO DIỆN (JSX) ---
+    // ==========================================
     return (
         <div className="min-h-screen bg-[#0a0a16] text-gray-300 font-display flex">
 
-            {/* SIDEBAR */}
-            <div className="w-64 bg-[#151525] border-r border-white/5 p-6 flex flex-col gap-6 fixed h-full z-20 overflow-y-auto no-scrollbar">
-                <h1 className="text-2xl font-black text-white flex items-center gap-2"><RiShieldUserLine className="text-red-500" /> ADMIN</h1>
-                <nav className="flex flex-col gap-2">
-                    <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'dashboard' ? 'bg-gray-700 text-white' : 'hover:bg-white/5'}`}><RiBarChartFill /> Tổng Quan</button>
-                    <button onClick={() => setActiveTab('users')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'users' ? 'bg-red-500/20 text-red-500' : 'hover:bg-white/5'}`}><RiUser3Line /> Users</button>
-                    <button onClick={() => setActiveTab('reports')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'reports' ? 'bg-yellow-500/20 text-yellow-500' : 'hover:bg-white/5'}`}><RiFlag2Line /> Báo Lỗi</button>
-                    <button onClick={() => setActiveTab('comments')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'comments' ? 'bg-blue-500/20 text-blue-500' : 'hover:bg-white/5'}`}><RiChat1Line /> Bình Luận</button>
-                    <button onClick={() => setActiveTab('quests')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'quests' ? 'bg-green-500/20 text-green-500' : 'hover:bg-white/5'}`}><RiTaskLine /> Nhiệm Vụ</button>
-                    <button onClick={() => setActiveTab('comics')} className={`px-4 py-3 rounded-lg font-bold cursor-pointer flex items-center gap-3 transition-colors ${activeTab === 'comics' ? 'bg-purple-500/20 text-purple-500' : 'hover:bg-white/5'}`}><RiBookmarkLine /> Truyện</button>
+            {/* --- SIDEBAR --- */}
+            <div className="w-64 bg-[#151525] border-r border-white/5 p-6 flex flex-col gap-6 fixed h-full z-20 overflow-y-auto no-scrollbar shadow-xl">
+                <h1 className="text-2xl font-black text-white flex items-center gap-2 tracking-tight"><RiShieldUserLine className="text-red-500" /> ADMIN PANEL</h1>
+                
+                <nav className="flex flex-col gap-2 flex-1">
+                    {/* Helper tạo menu item */}
+                    {[
+                        { id: 'dashboard', icon: RiBarChartFill, label: 'Tổng Quan', color: 'gray' },
+                        { id: 'users', icon: RiUser3Line, label: 'Quản Lý Users', color: 'red' },
+                        { id: 'reports', icon: RiFlag2Line, label: 'Báo Lỗi Truyện', color: 'yellow' },
+                        // --- TAB MỚI ---
+                        { id: 'comment_reports', icon: RiSpamLine, label: 'Báo Cáo Bình Luận', color: 'orange' },
+                        { id: 'comments', icon: RiChat1Line, label: 'Tất Cả Bình Luận', color: 'blue' },
+                        { id: 'quests', icon: RiTaskLine, label: 'Hệ Thống Nhiệm Vụ', color: 'green' },
+                        { id: 'comics', icon: RiBookmarkLine, label: 'Cấu Hình Truyện', color: 'purple' },
+                    ].map(item => {
+                        const isActive = activeTab === item.id;
+                        // Mapping màu sắc cho Tailwind
+                        const colorClasses = {
+                            gray: isActive ? 'bg-gray-700 text-white shadow-lg shadow-gray-900/20' : 'hover:bg-white/5 text-gray-400 hover:text-white',
+                            red: isActive ? 'bg-red-500/20 text-red-500 shadow-lg shadow-red-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-red-400',
+                            yellow: isActive ? 'bg-yellow-500/20 text-yellow-500 shadow-lg shadow-yellow-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-yellow-400',
+                            orange: isActive ? 'bg-orange-500/20 text-orange-500 shadow-lg shadow-orange-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-orange-400',
+                            blue: isActive ? 'bg-blue-500/20 text-blue-500 shadow-lg shadow-blue-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-blue-400',
+                            green: isActive ? 'bg-green-500/20 text-green-500 shadow-lg shadow-green-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-green-400',
+                            purple: isActive ? 'bg-purple-500/20 text-purple-500 shadow-lg shadow-purple-900/10' : 'hover:bg-white/5 text-gray-400 hover:text-purple-400',
+                        };
+                        
+                        return (
+                            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`px-4 py-3 rounded-xl font-bold cursor-pointer flex items-center gap-3 transition-all duration-300 ${colorClasses[item.color]} ${isActive ? 'scale-[1.02]' : ''}`}>
+                                <item.icon size={20} /> {item.label}
+                            </button>
+                        );
+                    })}
                 </nav>
-                <Link to="/" className="mt-auto flex items-center gap-2 text-sm text-gray-500 hover:text-white"><RiArrowLeftLine /> Về Trang Web</Link>
+                <Link to="/" className="mt-auto flex items-center gap-2 text-sm text-gray-500 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors font-bold"><RiArrowLeftLine /> Quay về Trang Chủ</Link>
             </div>
 
-            {/* CONTENT */}
+            {/* --- MAIN CONTENT --- */}
             <div className="flex-1 p-8 ml-64">
-                <div className="flex justify-between items-end mb-6">
-                    <h2 className="text-3xl font-bold text-white capitalize">
-                        {activeTab === 'dashboard' ? 'Tổng Quan Hệ Thống' : `Quản Lý ${activeTab}`}
-                    </h2>
-                    {activeTab === 'quests' && <button onClick={() => openQuestModal()} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-all shadow-lg"><RiAddLine /> Thêm Mới</button>}
+                {/* HEADER */}
+                <div className="flex justify-between items-end mb-8 animate-fade-in-down">
+                    <div>
+                        <h2 className="text-3xl font-black text-white capitalize tracking-tight mb-1">
+                            {activeTab === 'dashboard' ? 'Tổng Quan Hệ Thống' : 
+                             activeTab === 'comment_reports' ? 'Quản Lý Báo Cáo Bình Luận' : 
+                             activeTab === 'users' ? 'Danh Sách Người Dùng' :
+                             `Quản Lý ${activeTab}`}
+                        </h2>
+                        <p className="text-gray-500 text-sm">Chào mừng trở lại, Admin!</p>
+                    </div>
+                    {activeTab === 'quests' && <button onClick={() => openQuestModal()} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-900/20 hover:shadow-green-900/40 hover:-translate-y-1"><RiAddLine size={18} /> Thêm Nhiệm Vụ Mới</button>}
                 </div>
 
-                {/* --- DASHBOARD STATS --- */}
+                {/* --- DASHBOARD OVERVIEW TAB --- */}
                 {activeTab === 'dashboard' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="bg-[#151525] p-6 rounded-xl border border-white/5 shadow-lg hover:border-red-500/50 transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center text-2xl"><RiUser3Line /></div>
-                                <div><p className="text-gray-400 text-xs font-bold uppercase">Người dùng</p><h3 className="text-xl font-black text-white">Quản lý User</h3></div>
-                            </div>
-                            <button onClick={() => setActiveTab('users')} className="text-red-500 text-xs font-bold mt-4 hover:underline">Truy cập ngay &rarr;</button>
-                        </div>
-                        <div className="bg-[#151525] p-6 rounded-xl border border-white/5 shadow-lg hover:border-yellow-500/50 transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center text-2xl"><RiFlag2Line /></div>
-                                <div><p className="text-gray-400 text-xs font-bold uppercase">Báo lỗi</p><h3 className="text-xl font-black text-white">Xử lý Báo cáo</h3></div>
-                            </div>
-                            <button onClick={() => setActiveTab('reports')} className="text-yellow-500 text-xs font-bold mt-4 hover:underline">Truy cập ngay &rarr;</button>
-                        </div>
-                        <div className="bg-[#151525] p-6 rounded-xl border border-white/5 shadow-lg hover:border-purple-500/50 transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-purple-500/20 text-purple-500 flex items-center justify-center text-2xl"><RiBookmarkLine /></div>
-                                <div><p className="text-gray-400 text-xs font-bold uppercase">Nội dung</p><h3 className="text-xl font-black text-white">Cấu hình Truyện</h3></div>
-                            </div>
-                            <button onClick={() => setActiveTab('comics')} className="text-purple-500 text-xs font-bold mt-4 hover:underline">Truy cập ngay &rarr;</button>
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-scale-up">
+                        {/* Helper tạo thẻ thống kê */}
+                        {[
+                            { id: 'users', icon: RiUser3Line, title: 'Người dùng', subtitle: 'Quản lý User & Role', color: 'red' },
+                            { id: 'reports', icon: RiFlag2Line, title: 'Báo lỗi truyện', subtitle: 'Xử lý báo cáo lỗi', color: 'yellow' },
+                            // --- THẺ MỚI CHO BÁO CÁO BÌNH LUẬN ---
+                            { id: 'comment_reports', icon: RiSpamLine, title: 'Spam / Độc hại', subtitle: 'Báo cáo bình luận', color: 'orange' },
+                            { id: 'comics', icon: RiBookmarkLine, title: 'Nội dung', subtitle: 'Cấu hình Truyện', color: 'purple' },
+                        ].map(card => {
+                            const colorClasses = {
+                                red: 'hover:border-red-500/50 text-red-500 bg-red-500/20',
+                                yellow: 'hover:border-yellow-500/50 text-yellow-500 bg-yellow-500/20',
+                                orange: 'hover:border-orange-500/50 text-orange-500 bg-orange-500/20',
+                                purple: 'hover:border-purple-500/50 text-purple-500 bg-purple-500/20',
+                            };
+                            return (
+                                <div key={card.id} className={`bg-[#151525] p-6 rounded-2xl border border-white/5 shadow-xl transition-all duration-300 cursor-pointer group hover:-translate-y-1 ${colorClasses[card.color].split(' ')[0]}`} onClick={() => setActiveTab(card.id)}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${colorClasses[card.color].split(' ').slice(1).join(' ')}`}><card.icon /></div>
+                                        <div><p className="text-gray-400 text-xs font-bold uppercase tracking-wider">{card.title}</p><h3 className="text-xl font-black text-white mt-1">{card.subtitle}</h3></div>
+                                    </div>
+                                    <div className={`text-xs font-bold mt-6 flex items-center gap-1 group-hover:gap-2 transition-all ${colorClasses[card.color].split(' ')[1]}`}>Truy cập ngay <RiArrowLeftLine className="rotate-180" /></div>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* SEARCH & FILTER BAR */}
+                {/* --- SEARCH & FILTER BAR --- */}
                 {activeTab !== 'comics' && activeTab !== 'dashboard' && (
-                    <div className="bg-[#151525] p-4 rounded-xl border border-white/5 mb-6 flex flex-col md:flex-row gap-4 items-center shadow-lg">
+                    <div className="bg-[#151525] p-4 rounded-2xl border border-white/5 mb-8 flex flex-col md:flex-row gap-4 items-center shadow-lg animate-fade-in">
                         <div className="flex-1 w-full relative">
-                            <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                            <input type="text" placeholder="Tìm kiếm..." className="w-full bg-[#1f1f3a] border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-white focus:outline-none focus:border-red-500 transition-colors placeholder:text-gray-600" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><RiCloseLine /></button>}
+                            <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                            <input type="text" placeholder={activeTab === 'users' ? "Tìm theo tên, email..." : "Tìm kiếm..."} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl pl-12 pr-10 py-3 text-white focus:outline-none focus:border-primary transition-colors placeholder:text-gray-600 text-sm font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"><RiCloseLine size={18} /></button>}
                         </div>
+                        
+                        {/* Bộ lọc riêng cho tab Users */}
                         {activeTab === 'users' && (
-                            <div className="flex gap-3 w-full md:w-auto">
-                                <div className="relative"><select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="bg-[#1f1f3a] border border-white/10 text-white text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-red-500 appearance-none cursor-pointer"><option value="all">Tất cả Role</option><option value="admin">Admin</option><option value="user">User</option></select><RiFilter3Line className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={14} /></div>
-                                <div className="relative"><select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-[#1f1f3a] border border-white/10 text-white text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-red-500 appearance-none cursor-pointer"><option value="all">Tất cả Trạng thái</option><option value="active">Hoạt động</option><option value="banned">Bị chặn</option></select><RiFilter3Line className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={14} /></div>
-                                {(searchTerm || filterRole !== 'all' || filterStatus !== 'all') && <button onClick={clearFilters} className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-red-400 text-sm font-bold rounded-lg border border-white/5 transition-colors">Xóa Lọc</button>}
+                            <div className="flex gap-3 w-full md:w-auto animate-fade-in">
+                                <div className="relative group">
+                                    <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="bg-[#1f1f3a] border border-white/10 group-hover:border-white/30 text-white text-sm font-bold rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-primary appearance-none cursor-pointer transition-all"><option value="all">Tất cả Role</option><option value="admin">Admin</option><option value="user">User</option></select>
+                                    <RiFilter3Line className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+                                </div>
+                                <div className="relative group">
+                                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="bg-[#1f1f3a] border border-white/10 group-hover:border-white/30 text-white text-sm font-bold rounded-xl px-4 py-3 pr-10 focus:outline-none focus:border-primary appearance-none cursor-pointer transition-all"><option value="all">Tất cả Trạng thái</option><option value="active">Hoạt động</option><option value="banned">Bị chặn</option></select>
+                                    <RiFilter3Line className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+                                </div>
+                                <button onClick={clearFilters} className="px-5 py-3 bg-white/5 hover:bg-white/10 text-red-400 text-sm font-bold rounded-xl border border-white/5 transition-all hover:border-red-400/30 flex items-center gap-2"><RiCloseLine /> Đặt lại</button>
+                                {/* Nút tìm kiếm server-side cho users */}
+                                <button onClick={() => fetchData()} className="px-5 py-3 bg-primary hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2"><RiSearchLine /> Tìm</button>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* TAB COMICS (GIAO DIỆN RIÊNG - LOGIC CŨ) */}
-                {activeTab === 'comics' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="flex flex-col gap-8">
-                            {/* Form Cấu Hình */}
-                            <div className="bg-[#151525] p-6 rounded-xl border border-white/10 h-fit">
-                                <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2">Cấu Hình Truyện</h3>
-                                <form onSubmit={handleUpdateComic} className="flex flex-col gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 uppercase">Slug Truyện</label>
-                                        <input type="text" placeholder="VD: one-piece" value={comicForm.slug} onChange={e => setComicForm({ ...comicForm, slug: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white mt-1 focus:border-primary outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 uppercase">Tên Gợi Nhớ</label>
-                                        <input type="text" placeholder="VD: Đảo Hải Tặc" value={comicForm.name} onChange={e => setComicForm({ ...comicForm, name: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white mt-1 focus:border-primary outline-none" />
-                                    </div>
-                                    <div className="flex gap-4 mt-2">
-                                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={comicForm.is_hidden} onChange={e => setComicForm({ ...comicForm, is_hidden: e.target.checked })} className="accent-red-500 w-4 h-4" /><span className="text-sm font-bold text-red-400">Ẩn Truyện</span></label>
-                                        <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={comicForm.is_recommended} onChange={e => setComicForm({ ...comicForm, is_recommended: e.target.checked })} className="accent-yellow-500 w-4 h-4" /><span className="text-sm font-bold text-yellow-400">Đề Cử (Hot)</span></label>
-                                    </div>
-                                    <button type="submit" className="mt-2 w-full py-2.5 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg flex items-center justify-center gap-2"><RiSave3Line /> Lưu Cấu Hình</button>
-                                </form>
-                            </div>
-
-                            {/* Tìm kiếm từ Nguồn */}
-                            <div className="bg-[#151525] p-6 rounded-xl border border-white/10">
-                                <h3 className="text-lg font-bold text-white mb-4 border-b border-white/10 pb-2 flex items-center gap-2"><RiGlobalLine className="text-green-500" /> Tìm Từ Kho Truyện</h3>
-                                <form onSubmit={handleSearchOtruyen} className="flex gap-2 mb-4">
-                                    <input type="text" placeholder="Nhập tên truyện..." value={externalSearch} onChange={(e) => setExternalSearch(e.target.value)} className="flex-1 bg-[#252538] border border-white/10 rounded p-2 text-white text-sm outline-none" />
-                                    <button type="submit" disabled={searchingExternal} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded">{searchingExternal ? '...' : <RiSearchLine />}</button>
-                                </form>
-                                <div className="max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-2">
-                                    {externalResults.map(item => (
-                                        <div key={item._id} className="flex items-center justify-between p-2 bg-white/5 rounded hover:bg-white/10 cursor-pointer" onClick={() => selectExternalComic(item)}>
-                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                <div className="w-8 h-10 bg-black/50 rounded flex-shrink-0 overflow-hidden"><img src={`https://otruyenapi.com/uploads/comics/${item.thumb_url}`} className="w-full h-full object-cover" alt="" /></div>
-                                                <div className="min-w-0"><p className="text-xs font-bold text-white truncate">{item.name}</p><p className="text-[10px] text-gray-500 truncate">{item.slug}</p></div>
-                                            </div>
-                                            <RiDownloadCloud2Line className="text-primary flex-shrink-0 ml-2" />
-                                        </div>
-                                    ))}
-                                    {externalResults.length === 0 && !searchingExternal && <p className="text-center text-gray-600 text-xs italic">Nhập tên để tìm...</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Danh sách đã quản lý */}
-                        <div className="lg:col-span-2 bg-[#151525] rounded-xl border border-white/5 overflow-hidden h-fit">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-[#1f1f3a] text-white text-xs uppercase font-bold">
-                                        <th className="p-4 border-b border-white/10">Slug / Tên</th>
-                                        <th className="p-4 border-b border-white/10 text-center">Trạng Thái</th>
-                                        <th className="p-4 border-b border-white/10 text-right">Sửa</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {managedComics.map(c => (
-                                        <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 text-sm">
-                                            <td className="p-4"><div className="font-bold text-white">{c.name || c.slug}</div><div className="text-xs text-gray-500">{c.slug}</div></td>
-                                            <td className="p-4 text-center">
-                                                {c.is_hidden === 1 && <span className="inline-block bg-red-500/20 text-red-500 text-[10px] font-bold px-2 py-1 rounded mr-2">BỊ ẨN</span>}
-                                                {c.is_recommended === 1 && <span className="inline-block bg-yellow-500/20 text-yellow-500 text-[10px] font-bold px-2 py-1 rounded">ĐỀ CỬ</span>}
-                                                {c.is_hidden === 0 && c.is_recommended === 0 && <span className="text-gray-500 text-xs">Bình thường</span>}
-                                            </td>
-                                            <td className="p-4 text-right"><button onClick={() => editComic(c)} className="text-blue-500 hover:text-white font-bold text-xs underline">Sửa</button></td>
-                                        </tr>
-                                    ))}
-                                    {managedComics.length === 0 && <tr><td colSpan="3" className="p-6 text-center text-gray-500 italic">Chưa có dữ liệu.</td></tr>}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* TABLE FOR OTHER TABS */}
+                {/* --- DATA TABLE (CHO CÁC TAB TRỪ COMICS & DASHBOARD) --- */}
                 {activeTab !== 'comics' && activeTab !== 'dashboard' && (
-                    <div className="bg-[#151525] rounded-xl border border-white/5 overflow-hidden shadow-xl">
+                    <div className="bg-[#151525] rounded-2xl border border-white/5 overflow-hidden shadow-xl animate-scale-up">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-[#1f1f3a] text-white text-xs uppercase font-bold">
-                                        <th className="p-4 border-b border-white/10 w-16">ID</th>
-                                        {activeTab === 'users' && <><th className="p-4 border-b border-white/10">User Info</th><th className="p-4 border-b border-white/10 text-center">Role</th><th className="p-4 border-b border-white/10 text-center">Status</th><th className="p-4 border-b border-white/10 text-center">Warns</th></>}
-                                        {activeTab === 'reports' && <><th className="p-4 border-b border-white/10">Nội Dung Báo Lỗi</th><th className="p-4 border-b border-white/10">Người Báo</th></>}
-                                        {activeTab === 'comments' && <><th className="p-4 border-b border-white/10">Nội Dung</th><th className="p-4 border-b border-white/10">User</th><th className="p-4 border-b border-white/10">Truyện</th></>}
-                                        {activeTab === 'quests' && <><th className="p-4 border-b border-white/10">Tên</th><th className="p-4 border-b border-white/10">Action</th><th className="p-4 border-b border-white/10">Chu Kỳ</th><th className="p-4 border-b border-white/10">Mục Tiêu</th><th className="p-4 border-b border-white/10">XP</th></>}
-                                        <th className="p-4 border-b border-white/10 text-right">Hành Động</th>
+                                    <tr className="bg-[#1f1f3a]/80 text-gray-400 text-xs uppercase font-bold tracking-wider backdrop-blur-sm">
+                                        <th className="p-5 border-b border-white/10 w-20">ID</th>
+                                        
+                                        {/* Headers theo từng tab */}
+                                        {activeTab === 'users' && <><th className="p-5 border-b border-white/10">Thông Tin User</th><th className="p-5 border-b border-white/10 text-center">Vai Trò Hiện Tại</th><th className="p-5 border-b border-white/10 text-center">Đổi Vai Trò (Role)</th><th className="p-5 border-b border-white/10 text-center">Trạng Thái</th><th className="p-5 border-b border-white/10 text-center">Cảnh Báo</th></>}
+                                        
+                                        {activeTab === 'reports' && <><th className="p-5 border-b border-white/10">Chi Tiết Báo Lỗi</th><th className="p-5 border-b border-white/10">Người Báo Cáo</th></>}
+                                        
+                                        {/* --- HEADERS CHO TAB REPORT COMMENT MỚI --- */}
+                                        {activeTab === 'comment_reports' && <><th className="p-5 border-b border-white/10 w-[35%]">Bình Luận Bị Báo Cáo</th><th className="p-5 border-b border-white/10 w-[20%]">Lý Do Vi Phạm</th><th className="p-5 border-b border-white/10">Người Báo Cáo</th></>}
+                                        
+                                        {activeTab === 'comments' && <><th className="p-5 border-b border-white/10 w-[40%]">Nội Dung Bình Luận</th><th className="p-5 border-b border-white/10">Người Đăng</th><th className="p-5 border-b border-white/10">Tại Truyện</th></>}
+                                        
+                                        {activeTab === 'quests' && <><th className="p-5 border-b border-white/10">Tên Nhiệm Vụ</th><th className="p-5 border-b border-white/10 text-center">Loại Hành Động</th><th className="p-5 border-b border-white/10 text-center">Chu Kỳ</th><th className="p-5 border-b border-white/10 text-center">Mục Tiêu</th><th className="p-5 border-b border-white/10 text-center">Phần Thưởng</th></>}
+                                        
+                                        <th className="p-5 border-b border-white/10 text-right">Hành Động</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {filteredData.length > 0 ? filteredData.map(item => (
-                                        <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors text-sm">
-                                            <td className="p-4 text-gray-500">#{item.id}</td>
+                                <tbody className="divide-y divide-white/5">
+                                    {loading ? (
+                                        <tr><td colSpan="10" className="p-10 text-center"><div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></td></tr>
+                                    ) : filteredData.length > 0 ? (
+                                        filteredData.map(item => (
+                                            <tr key={item.id} className="hover:bg-white/[0.02] transition-colors text-sm group">
+                                                <td className="p-5 text-gray-500 font-mono">#{item.id}</td>
 
-                                            {/* USERS */}
-                                            {activeTab === 'users' && (
-                                                <>
-                                                    <td className="p-4"><div className="font-bold text-white">{item.full_name}</div><div className="text-xs text-gray-600">@{item.username}</div></td>
-                                                    <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${item.role === 'admin' ? 'bg-red-500/20 text-red-500' : 'bg-blue-500/20 text-blue-500'}`}>{item.role}</span></td>
-                                                    <td className="p-4 text-center">{item.status === 'banned' ? <span className="text-red-500 font-bold text-xs">BỊ CHẶN</span> : <span className="text-green-500 font-bold text-xs">Active</span>}</td>
-                                                    <td className="p-4 text-center text-yellow-500 font-bold">{item.warnings > 0 ? item.warnings : '-'}</td>
-                                                    <td className="p-4 text-right flex justify-end gap-2">
-                                                        {item.role !== 'admin' && (
-                                                            <>
-                                                                <button onClick={() => handleWarn(item.id)} title="Warn" className="p-2 rounded bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-black"><RiErrorWarningLine /></button>
-                                                                {item.status === 'banned' ? <button onClick={() => handleUnban(item.id)} className="p-2 rounded bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white"><RiCheckLine /></button> : <button onClick={() => openBanModal(item)} className="p-2 rounded bg-gray-700 hover:bg-white hover:text-black"><RiProhibitedLine /></button>}
-                                                                <button onClick={() => handleDeleteUser(item.id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"><RiDeleteBinLine /></button>
-                                                            </>
-                                                        )}
-                                                    </td>
-                                                </>
-                                            )}
+                                                {/* --- TAB USERS CONTENT --- */}
+                                                {activeTab === 'users' && (
+                                                    <>
+                                                        <td className="p-5">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden"><img src={item.avatar?.startsWith('http') ? item.avatar : `https://ui-avatars.com/api/?name=${item.full_name}&background=random`} alt="" className="w-full h-full object-cover" /></div>
+                                                                <div><div className="font-bold text-white text-base">{item.full_name}</div><div className="text-xs text-gray-500 font-medium">@{item.username} | {item.email}</div></div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-5 text-center"><span className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider ${item.role === 'admin' ? 'bg-red-500/20 text-red-500 ring-1 ring-red-500/30' : 'bg-blue-500/20 text-blue-500 ring-1 ring-blue-500/30'}`}>{item.role === 'admin' ? <><RiAdminLine className="inline mb-0.5 mr-1"/> ADMIN</> : <><RiUser3Line className="inline mb-0.5 mr-1"/> USER</>}</span></td>
+                                                        
+                                                        {/* --- CỘT ĐỔI ROLE MỚI --- */}
+                                                        <td className="p-5 text-center">
+                                                            <div className="relative inline-block">
+                                                                <select 
+                                                                    value={item.role} 
+                                                                    onChange={(e) => handleChangeRole(item.id, e.target.value, item.role)}
+                                                                    className={`bg-[#252538] border border-white/10 text-white text-xs font-bold rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary appearance-none cursor-pointer transition-all hover:border-white/30 ${item.id === currentAdminId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                    disabled={item.id === currentAdminId} // Disable chính mình
+                                                                >
+                                                                    <option value="user">Chuyển thành USER</option>
+                                                                    <option value="admin">Chuyển thành ADMIN</option>
+                                                                </select>
+                                                                <RiUserStarLine className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={14} />
+                                                            </div>
+                                                            {item.id === currentAdminId && <div className="text-[10px] text-gray-500 mt-1 italic">(Bạn)</div>}
+                                                        </td>
+                                                        
+                                                        <td className="p-5 text-center">{item.status === 'banned' ? <span className="inline-flex items-center gap-1 text-red-500 font-bold text-xs bg-red-500/10 px-2 py-1 rounded-lg"><RiProhibitedLine/> BỊ CHẶN</span> : <span className="inline-flex items-center gap-1 text-green-500 font-bold text-xs bg-green-500/10 px-2 py-1 rounded-lg"><RiCheckLine/> HOẠT ĐỘNG</span>}</td>
+                                                        <td className="p-5 text-center"><span className={`font-bold ${item.warnings > 0 ? 'text-yellow-500' : 'text-gray-600'}`}>{item.warnings}</span></td>
+                                                        <td className="p-5 text-right">
+                                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                {item.role !== 'admin' && (
+                                                                    <>
+                                                                        <button onClick={() => handleWarn(item.id)} title="Gửi cảnh báo" className="p-2.5 rounded-xl bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all"><RiErrorWarningLine size={18} /></button>
+                                                                        {item.status === 'banned' ? <button onClick={() => handleUnban(item.id)} title="Mở khóa tài khoản" className="p-2.5 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white transition-all"><RiCheckLine size={18} /></button> : <button onClick={() => openBanModal(item)} title="Chặn tài khoản" className="p-2.5 rounded-xl bg-gray-700/50 text-gray-300 hover:bg-white hover:text-black transition-all"><RiProhibitedLine size={18} /></button>}
+                                                                        <button onClick={() => handleDeleteUser(item.id)} title="Xóa người dùng" className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><RiDeleteBinLine size={18} /></button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                )}
 
-                                            {/* REPORTS (ĐÃ FIX DISPLAY) */}
-                                            {activeTab === 'reports' && (
-                                                <>
-                                                    <td className="p-4">
-                                                        <div className="font-bold text-white text-xs">Truyện: {item.comic_slug}</div>
-                                                        {item.chapter_name && <div className="text-[10px] text-blue-400">Chương: {item.chapter_name}</div>}
-                                                        <div className="text-sm text-red-400 mt-1 italic">"{item.reason}"</div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="text-xs text-gray-300">{item.username}</div>
-                                                        <div className="text-[10px] text-gray-600">{new Date(item.created_at).toLocaleDateString()}</div>
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        <button onClick={() => handleResolveReport(item.id)} className="px-3 py-1.5 rounded bg-green-600 text-white text-xs font-bold hover:bg-green-500 shadow-lg">
-                                                            <RiCheckLine className="inline mr-1" /> Đã Xử Lý
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            )}
+                                                {/* --- TAB REPORTS CONTENT --- */}
+                                                {activeTab === 'reports' && (
+                                                     <><td className="p-5">
+                                                        <div className="flex gap-3">
+                                                            {/* SỬA LỖI ẢNH: Chỉ hiện thẻ img nếu có dữ liệu ảnh */}
+                                                            {item.comic_image && (
+                                                                <div className="w-12 h-16 bg-white/5 rounded-lg flex-shrink-0 overflow-hidden">
+                                                                    <img src={`https://img.otruyenapi.com/uploads/comics/${item.comic_image}`} alt="" className="w-full h-full object-cover opacity-50" onError={(e) => e.target.style.display='none'} />
+                                                                </div>
+                                                            )}
+                                                            <div><div className="font-bold text-white text-base">{item.comic_name || item.comic_slug}</div><div className="text-xs text-primary font-bold mt-0.5">{item.comic_slug} {item.chapter_name && <span className="text-gray-400">| Chương: {item.chapter_name}</span>}</div><div className="mt-2 bg-red-500/10 text-red-400 p-3 rounded-xl border border-red-500/20 text-sm italic">"<span className="font-bold">Lý do:</span> {item.reason}"</div></div></div></td><td className="p-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden"><img src={item.avatar?.startsWith('http') ? item.avatar : `https://ui-avatars.com/api/?name=${item.username}&background=random`} alt="" className="w-full h-full object-cover" /></div><div><div className="font-bold text-white">{item.full_name}</div><div className="text-xs text-gray-500">@{item.username}</div><div className="text-[11px] text-gray-600 mt-1 font-medium">{new Date(item.created_at).toLocaleString('vi-VN')}</div></div></div></td><td className="p-5 text-right"><button onClick={() => handleResolveReport(item.id)} className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-500 shadow-lg shadow-green-900/20 transition-all flex items-center gap-2 ml-auto hover:scale-105 active:scale-95"><RiCheckLine size={16}/> Xác nhận đã xử lý</button></td></>
+                                                )}
 
-                                            {/* COMMENTS */}
-                                            {activeTab === 'comments' && (
-                                                <>
-                                                    <td className="p-4"><div className="font-bold text-white max-w-xs truncate">{item.content}</div></td>
-                                                    <td className="p-4 text-xs text-gray-300">{item.username}</td>
-                                                    <td className="p-4 text-xs text-primary truncate max-w-[100px]">{item.comic_slug}</td>
-                                                    <td className="p-4 text-right"><button onClick={() => handleDeleteComment(item.id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"><RiDeleteBinLine /></button></td>
-                                                </>
-                                            )}
+                                                {/* --- TAB COMMENT REPORTS CONTENT (MỚI) --- */}
+                                                {activeTab === 'comment_reports' && (
+                                                    <>
+                                                        <td className="p-5">
+                                                            <div className="bg-[#1f1f3a] p-4 rounded-xl border border-white/5 relative group/comment">
+                                                                <RiChat1Line className="absolute top-4 left-4 text-gray-600 opacity-20 z-0" size={40}/>
+                                                                <div className="relative z-10 pl-2">
+                                                                    <p className="text-gray-300 text-sm italic line-clamp-3 leading-relaxed">"{item.comment_content}"</p>
+                                                                    <div className="flex items-center gap-2 mt-3 text-xs border-t border-white/5 pt-2">
+                                                                        <span className="text-gray-500 font-bold">Tác giả:</span>
+                                                                        {item.reported_user_id ? (
+                                                                             <Link to={`/profile/${item.reported_user_id}`} className="flex items-center gap-2 hover:bg-white/5 p-1 rounded-lg transition-colors group/author">
+                                                                                <div className="w-6 h-6 rounded-full overflow-hidden bg-white/10"><img src={item.reported_user_avatar?.startsWith('http') ? item.reported_user_avatar : `https://ui-avatars.com/api/?name=${item.reported_user_name}&background=random`} alt="" className="w-full h-full object-cover" /></div>
+                                                                                <span className="text-blue-400 font-bold group-hover/author:underline">{item.reported_user_name}</span> <span className="text-gray-600">(ID: {item.reported_user_id})</span>
+                                                                             </Link>
+                                                                        ) : (
+                                                                            <span className="text-gray-500 italic">Người dùng đã bị xóa</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-5">
+                                                             <span className="inline-block bg-red-500/20 text-red-500 px-3 py-2 rounded-lg font-bold text-sm border border-red-500/20 flex items-center gap-2"><RiFlag2Line /> {item.reason}</span>
+                                                        </td>
+                                                        <td className="p-5">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden"><img src={item.reporter_avatar?.startsWith('http') ? item.reporter_avatar : `https://ui-avatars.com/api/?name=${item.reporter_name}&background=random`} alt="" className="w-full h-full object-cover" /></div>
+                                                                <div>
+                                                                    <div className="font-bold text-white">{item.reporter_name}</div>
+                                                                    <div className="text-[11px] text-gray-500 mt-1 font-medium flex items-center gap-1"><RiTimeLine size={12}/> {new Date(item.created_at).toLocaleString('vi-VN')}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-5 text-right">
+                                                            <div className="flex justify-end gap-3">
+                                                                <button onClick={() => handleResolveCommentReport(item.id, 'delete_comment')} title="Xóa bình luận vi phạm và đóng báo cáo" className="px-4 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-500 shadow-lg shadow-red-900/20 transition-all flex items-center gap-2 hover:scale-105 active:scale-95"><RiDeleteBinLine size={16} /> Xóa & Đóng</button>
+                                                                <button onClick={() => handleResolveCommentReport(item.id, 'dismiss')} title="Bỏ qua báo cáo này (không xóa bình luận)" className="px-4 py-2.5 rounded-xl bg-gray-700 text-gray-300 text-xs font-bold hover:bg-gray-600 hover:text-white transition-all flex items-center gap-2 hover:scale-105 active:scale-95"><RiCloseLine size={16} /> Bỏ qua</button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                )}
 
-                                            {/* QUESTS */}
-                                            {activeTab === 'quests' && (
-                                                <>
-                                                    <td className="p-4"><div className="font-bold text-white">{item.name}</div><div className="text-[10px] text-gray-500">{item.quest_key}</div></td>
-                                                    <td className="p-4 text-gray-400 uppercase text-xs font-bold">{item.action_type}</td>
-                                                    <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${item.type === 'daily' ? 'bg-green-500/20 text-green-500' : item.type === 'weekly' ? 'bg-blue-500/20 text-blue-500' : 'bg-yellow-500/20 text-yellow-500'}`}>{item.type}</span></td>
-                                                    <td className="p-4 text-white font-bold">{item.target_count}</td>
-                                                    <td className="p-4 text-primary font-bold">+{item.reward_exp}</td>
-                                                    <td className="p-4 text-right flex justify-end gap-2">
-                                                        <button onClick={() => openQuestModal(item)} className="p-2 rounded bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white"><RiEditLine /></button>
-                                                        <button onClick={() => handleDeleteQuest(item.id)} className="p-2 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"><RiDeleteBinLine /></button>
-                                                    </td>
-                                                </>
-                                            )}
-                                        </tr>
-                                    )) : <tr><td colSpan="6" className="p-8 text-center text-gray-500 italic">Không có dữ liệu.</td></tr>}
+                                                {/* --- TAB COMMENTS CONTENT --- */}
+                                                {activeTab === 'comments' && (
+                                                    <><td className="p-5"><div className="bg-[#1f1f3a] p-4 rounded-xl border border-white/5"><p className="text-gray-300 text-sm line-clamp-2 font-medium">"{item.content}"</p><div className="text-[10px] text-gray-600 mt-2 font-bold flex items-center gap-1"><RiTimeLine size={12}/> {new Date(item.created_at).toLocaleString('vi-VN')}</div></div></td><td className="p-5"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full bg-white/10 overflow-hidden"><img src={item.avatar?.startsWith('http') ? item.avatar : `https://ui-avatars.com/api/?name=${item.username}&background=random`} alt="" className="w-full h-full object-cover" /></div><span className="text-sm font-bold text-white">{item.username}</span></div></td><td className="p-5"><span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-lg">{item.comic_slug}</span></td><td className="p-5 text-right"><button onClick={() => handleDeleteComment(item.id)} className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"><RiDeleteBinLine size={18} /></button></td></>
+                                                )}
+
+                                                {/* --- TAB QUESTS CONTENT --- */}
+                                                {activeTab === 'quests' && (
+                                                     <><td className="p-5"><div className="font-bold text-white text-base">{item.name}</div><div className="text-xs text-gray-500 font-mono mt-1 bg-white/5 px-2 py-0.5 rounded inline-block">{item.quest_key}</div><div className="text-xs text-gray-400 mt-2 italic">{item.description}</div></td><td className="p-5 text-center"><span className="text-gray-400 uppercase text-[11px] font-black tracking-wider bg-gray-700/50 px-3 py-1.5 rounded-lg">{item.action_type}</span></td><td className="p-5 text-center"><span className={`px-3 py-1.5 rounded-lg text-[11px] uppercase font-black tracking-wider ${item.type === 'daily' ? 'bg-green-500/20 text-green-500 ring-1 ring-green-500/30' : item.type === 'weekly' ? 'bg-blue-500/20 text-blue-500 ring-1 ring-blue-500/30' : 'bg-yellow-500/20 text-yellow-500 ring-1 ring-yellow-500/30'}`}>{item.type === 'daily' ? 'Hàng Ngày' : item.type === 'weekly' ? 'Hàng Tuần' : 'Thành Tựu'}</span></td><td className="p-5 text-center"><span className="text-white font-black text-lg">{item.target_count}</span> <span className="text-gray-500 text-xs font-bold">lần</span></td><td className="p-5 text-center"><span className="text-primary font-black text-lg">+{item.reward_exp}</span> <span className="text-primary/70 text-xs font-bold">XP</span></td><td className="p-5 text-right"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => openQuestModal(item)} className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all"><RiEditLine size={18} /></button><button onClick={() => handleDeleteQuest(item.id)} className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><RiDeleteBinLine size={18} /></button></div></td></>
+                                                )}
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="10" className="p-10 text-center text-gray-500 italic flex flex-col items-center justify-center gap-2"><RiSpamLine size={32} className="text-gray-700"/> Không có dữ liệu nào.</td></tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* --- UI PHÂN TRANG (Chỉ hiện cho tab Users) --- */}
+                        {activeTab === 'users' && totalPages > 1 && (
+                            <div className="flex justify-between items-center p-5 bg-[#151525] border-t border-white/5">
+                                <div className="text-sm text-gray-500 font-medium">Đang xem trang <span className="font-bold text-white">{currentPage}</span> trên tổng số <span className="font-bold text-white">{totalPages}</span> trang</div>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className={`px-4 py-2 rounded-xl border border-white/10 text-sm font-bold transition-all flex items-center gap-1 ${currentPage === 1 ? 'text-gray-600 cursor-not-allowed bg-white/5' : 'text-white hover:bg-white/10 hover:border-white/30 hover:-translate-x-1'}`}><RiArrowLeftLine /> Trang Trước</button>
+                                    <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className={`px-4 py-2 rounded-xl border border-white/10 text-sm font-bold transition-all flex items-center gap-1 flex-row-reverse ${currentPage === totalPages ? 'text-gray-600 cursor-not-allowed bg-white/5' : 'text-white hover:bg-white/10 hover:border-white/30 hover:translate-x-1'}`}><RiArrowLeftLine className="rotate-180" /> Trang Sau</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- TAB COMICS CONTENT (Giữ nguyên, chỉ update UI nhẹ) --- */}
+                {activeTab === 'comics' && (
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+                        {/* ... (Nội dung tab comics giữ nguyên như cũ, chỉ thay đổi class UI nếu cần) ... */}
+                        <div className="flex flex-col gap-8"><div className="bg-[#151525] p-6 rounded-2xl border border-white/10 h-fit shadow-xl"><h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><RiSave3Line className="text-primary"/> Cấu Hình Truyện</h3><form onSubmit={handleUpdateComic} className="flex flex-col gap-5"><div><label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Slug Truyện (ID)</label><input type="text" placeholder="VD: one-piece" value={comicForm.slug} onChange={e => setComicForm({ ...comicForm, slug: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white font-medium focus:border-primary outline-none transition-colors" /></div><div><label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Tên Hiển Thị Tùy Chỉnh</label><input type="text" placeholder="VD: Đảo Hải Tặc (để trống sẽ lấy tên gốc)" value={comicForm.name} onChange={e => setComicForm({ ...comicForm, name: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white font-medium focus:border-primary outline-none transition-colors" /></div><div className="flex gap-6 mt-2"><label className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-transparent hover:border-red-500/30 hover:bg-red-500/5 transition-all"><input type="checkbox" checked={comicForm.is_hidden} onChange={e => setComicForm({ ...comicForm, is_hidden: e.target.checked })} className="accent-red-500 w-5 h-5" /><span className="text-sm font-bold text-red-400 group-hover:text-red-500 transition-colors">Ẩn Truyện Này</span></label><label className="flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-transparent hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all"><input type="checkbox" checked={comicForm.is_recommended} onChange={e => setComicForm({ ...comicForm, is_recommended: e.target.checked })} className="accent-yellow-500 w-5 h-5" /><span className="text-sm font-bold text-yellow-400 group-hover:text-yellow-500 transition-colors">Đề Cử (Hot)</span></label></div><button type="submit" className="mt-4 w-full py-3 bg-primary hover:bg-blue-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40 hover:-translate-y-1"><RiSave3Line size={18} /> Lưu Cấu Hình</button></form></div>
+                        <div className="bg-[#151525] p-6 rounded-2xl border border-white/10 shadow-xl"><h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><RiGlobalLine className="text-green-500" /> Tìm Từ Kho Truyện Online</h3><form onSubmit={handleSearchOtruyen} className="flex gap-3 mb-6"><input type="text" placeholder="Nhập tên truyện cần tìm..." value={externalSearch} onChange={(e) => setExternalSearch(e.target.value)} className="flex-1 bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white text-sm font-medium outline-none focus:border-green-500 transition-colors" /><button type="submit" disabled={searchingExternal} className="bg-green-600 hover:bg-green-500 text-white p-3 rounded-xl transition-all shadow-lg shadow-green-900/20 hover:shadow-green-900/40">{searchingExternal ? <RiLoader4Line className="animate-spin" size={20}/> : <RiSearchLine size={20}/>}</button></form><div className="max-h-[400px] overflow-y-auto custom-scrollbar flex flex-col gap-3 pr-2">{externalResults.length > 0 ? externalResults.map(item => (<div key={item._id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 cursor-pointer transition-all border border-transparent hover:border-white/20 group" onClick={() => selectExternalComic(item)}><div className="flex items-center gap-3 overflow-hidden"><div className="w-10 h-14 bg-black/50 rounded-lg flex-shrink-0 overflow-hidden shadow-md"><img src={`https://img.otruyenapi.com/uploads/comics/${item.thumb_url}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" /></div><div className="min-w-0"><p className="text-sm font-bold text-white truncate group-hover:text-primary transition-colors">{item.name}</p><p className="text-xs text-gray-500 truncate font-mono mt-1">{item.slug}</p></div></div><RiDownloadCloud2Line className="text-gray-500 group-hover:text-primary flex-shrink-0 ml-3 transition-all" size={18} /></div>)) : !searchingExternal && <div className="text-center text-gray-500 text-sm italic py-10 flex flex-col items-center gap-2"><RiSearchLine size={24} className="text-gray-700"/>Nhập tên để tìm kiếm...</div>}</div></div></div>
+                        <div className="lg:col-span-2 bg-[#151525] rounded-2xl border border-white/5 overflow-hidden h-fit shadow-xl"><div className="p-5 border-b border-white/10"><h3 className="text-xl font-black text-white flex items-center gap-2"><RiBookmarkLine className="text-purple-500"/> Danh Sách Truyện Đã Cấu Hình <span className="text-sm text-gray-500 font-normal">({managedComics.length})</span></h3></div><table className="w-full text-left border-collapse"><thead><tr className="bg-[#1f1f3a]/80 text-gray-400 text-xs uppercase font-bold tracking-wider backdrop-blur-sm"><th className="p-5 border-b border-white/10">Thông Tin Truyện</th><th className="p-5 border-b border-white/10 text-center">Trạng Thái</th><th className="p-5 border-b border-white/10 text-right">Hành Động</th></tr></thead><tbody className="divide-y divide-white/5">{managedComics.length > 0 ? managedComics.map(c => (<tr key={c.id} className="hover:bg-white/[0.02] transition-colors text-sm group"><td className="p-5"><div className="font-bold text-white text-base">{c.name || c.slug}</div><div className="text-xs text-gray-500 font-mono mt-1 bg-white/5 px-2 py-0.5 rounded inline-block">{c.slug}</div></td><td className="p-5 text-center"><div className="flex items-center justify-center gap-2">{c.is_hidden === 1 && <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-500 text-[10px] font-black uppercase px-2 py-1 rounded-lg ring-1 ring-red-500/30"><RiProhibitedLine/> BỊ ẨN</span>}{c.is_recommended === 1 && <span className="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase px-2 py-1 rounded-lg ring-1 ring-yellow-500/30"><RiStarFill/> ĐỀ CỬ</span>}{c.is_hidden === 0 && c.is_recommended === 0 && <span className="text-gray-500 text-xs font-bold italic">Mặc định</span>}</div></td><td className="p-5 text-right"><button onClick={() => editComic(c)} className="px-4 py-2 rounded-xl bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white font-bold text-xs transition-all flex items-center gap-2 ml-auto opacity-0 group-hover:opacity-100"><RiEditLine size={16}/> Sửa Cấu Hình</button></td></tr>)) : <tr><td colSpan="3" className="p-10 text-center text-gray-500 italic">Chưa có truyện nào được cấu hình.</td></tr>}</tbody></table></div>
                     </div>
                 )}
             </div>
 
-            {/* BAN MODAL */}
+            {/* --- MODALS (Giữ nguyên, chỉ update UI nhẹ) --- */}
             {showBanModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#1a1a2e] border border-white/10 p-6 rounded-2xl w-full max-w-sm shadow-2xl animate-scale-up">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><RiProhibitedLine className="text-red-500" /> Chặn User: {selectedUser?.username}</h3>
-                        <select value={banDays} onChange={(e) => setBanDays(e.target.value)} className="w-full bg-[#252538] border border-white/10 text-white p-3 rounded-lg mb-6 focus:outline-none focus:border-red-500">
-                            <option value="1">1 Ngày</option><option value="3">3 Ngày</option><option value="7">1 Tuần</option><option value="-1">Vĩnh Viễn</option>
-                        </select>
-                        <div className="flex gap-3">
-                            <button onClick={() => setShowBanModal(false)} className="flex-1 py-2.5 rounded-lg bg-gray-700 text-white font-bold hover:bg-gray-600">Hủy</button>
-                            <button onClick={confirmBan} className="flex-1 py-2.5 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-900/30">Xác Nhận</button>
-                        </div>
-                    </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#1a1a2e] border border-white/10 p-8 rounded-3xl w-full max-w-sm shadow-2xl animate-scale-up relative"><button onClick={() => setShowBanModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white p-1"><RiCloseLine size={24}/></button><h3 className="text-2xl font-black text-white mb-2 flex items-center gap-3"><RiProhibitedLine className="text-red-500" size={28} /> Chặn Người Dùng</h3><p className="text-gray-400 text-sm mb-6">Bạn đang chặn <span className="font-bold text-white">{selectedUser?.username}</span>. Họ sẽ không thể đăng nhập.</p><div className="mb-6"><label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Thời gian chặn</label><select value={banDays} onChange={(e) => setBanDays(e.target.value)} className="w-full bg-[#252538] border border-white/10 text-white text-sm font-bold rounded-xl p-3 focus:outline-none focus:border-red-500 appearance-none cursor-pointer transition-all"><option value="1">1 Ngày - Cảnh cáo nhẹ</option><option value="3">3 Ngày - Vi phạm lần đầu</option><option value="7">1 Tuần - Vi phạm nghiêm trọng</option><option value="-1">Vĩnh Viễn - Vi phạm đặc biệt nghiêm trọng</option></select></div><div className="flex gap-4"><button onClick={() => setShowBanModal(false)} className="flex-1 py-3 rounded-xl bg-gray-700 text-white font-bold hover:bg-gray-600 transition-all">Hủy Bỏ</button><button onClick={confirmBan} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-900/30 transition-all flex items-center justify-center gap-2"><RiProhibitedLine/> Xác Nhận Chặn</button></div></div>
                 </div>
             )}
 
-            {/* QUEST MODAL */}
             {showQuestModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#1a1a2e] border border-white/10 p-6 rounded-2xl w-full max-w-md shadow-2xl animate-scale-up">
-                        <h3 className="text-xl font-bold text-white mb-6 border-b border-white/10 pb-2">{isEditingQuest ? 'Sửa Nhiệm Vụ' : 'Thêm Nhiệm Vụ'}</h3>
-                        <form onSubmit={handleSubmitQuest} className="flex flex-col gap-4">
-                            <div><label className="text-xs text-gray-500 font-bold uppercase">Hành Động</label><select value={questForm.action_type} onChange={e => { const act = e.target.value; setQuestForm({ ...questForm, action_type: act, quest_key: isEditingQuest ? questForm.quest_key : `${act}_${Date.now()}` }) }} disabled={isEditingQuest} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white cursor-pointer"><option value="read">Đọc Truyện</option><option value="comment">Bình Luận</option><option value="login">Đăng Nhập</option><option value="streak">Streak</option></select></div>
-                            <div><label className="text-xs text-gray-500 font-bold uppercase">Key</label><input type="text" disabled value={questForm.quest_key} className="w-full bg-[#1a1a2e] border border-white/10 rounded p-2 text-gray-500" /></div>
-                            <div><label className="text-xs text-gray-500 font-bold uppercase">Tên</label><input type="text" required value={questForm.name} onChange={e => setQuestForm({ ...questForm, name: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white" /></div>
-                            <div><label className="text-xs text-gray-500 font-bold uppercase">Mô tả</label><input type="text" value={questForm.description} onChange={e => setQuestForm({ ...questForm, description: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white" /></div>
-                            <div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-gray-500 font-bold uppercase">Mục Tiêu</label><input type="number" min="1" value={questForm.target_count} onChange={e => setQuestForm({ ...questForm, target_count: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white" /></div><div><label className="text-xs text-gray-500 font-bold uppercase">Thưởng XP</label><input type="number" min="0" value={questForm.reward_exp} onChange={e => setQuestForm({ ...questForm, reward_exp: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white" /></div></div>
-                            <div><label className="text-xs text-gray-500 font-bold uppercase">Chu Kỳ</label><select value={questForm.type} onChange={e => setQuestForm({ ...questForm, type: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded p-2 text-white cursor-pointer"><option value="daily">Hàng Ngày</option><option value="weekly">Hàng Tuần</option><option value="achievement">Thành Tựu</option></select></div>
-                            <div className="flex gap-3 mt-4"><button type="button" onClick={() => setShowQuestModal(false)} className="flex-1 py-2.5 rounded-lg bg-gray-700 text-white font-bold">Hủy</button><button type="submit" className="flex-1 py-2.5 rounded-lg bg-green-600 text-white font-bold shadow-lg">Lưu</button></div>
-                        </form>
-                    </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#1a1a2e] border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl animate-scale-up relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-500 to-blue-500"></div><button onClick={() => setShowQuestModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white p-1"><RiCloseLine size={24}/></button><h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3"><RiTaskLine className="text-green-500" size={28} /> {isEditingQuest ? 'Chỉnh Sửa Nhiệm Vụ' : 'Thêm Nhiệm Vụ Mới'}</h3><form onSubmit={handleSubmitQuest} className="flex flex-col gap-5"><div className="grid grid-cols-2 gap-5"><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Loại Hành Động</label><select value={questForm.action_type} onChange={e => { const act = e.target.value; setQuestForm({ ...questForm, action_type: act, quest_key: isEditingQuest ? questForm.quest_key : `${act}_${Date.now()}` }) }} disabled={isEditingQuest} className="w-full bg-[#252538] border border-white/10 rounded-xl p-3 text-white text-sm font-bold cursor-pointer focus:border-green-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"><option value="read">Đọc Truyện</option><option value="comment">Bình Luận</option><option value="login">Đăng Nhập</option><option value="streak">Chuỗi (Streak)</option></select></div><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Mã Key (Tự động)</label><input type="text" disabled value={questForm.quest_key} className="w-full bg-[#1a1a2e] border border-white/5 rounded-xl p-3 text-gray-600 text-sm font-mono italic cursor-not-allowed" /></div></div><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Tên Nhiệm Vụ</label><input type="text" required placeholder="VD: Đọc 5 chương truyện" value={questForm.name} onChange={e => setQuestForm({ ...questForm, name: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white font-medium focus:border-green-500 outline-none placeholder:text-gray-600" /></div><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Mô Tả Ngắn</label><input type="text" placeholder="VD: Hoàn thành để nhận thưởng..." value={questForm.description} onChange={e => setQuestForm({ ...questForm, description: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white font-medium focus:border-green-500 outline-none placeholder:text-gray-600" /></div><div className="grid grid-cols-3 gap-5"><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Mục Tiêu (Lần)</label><input type="number" min="1" required value={questForm.target_count} onChange={e => setQuestForm({ ...questForm, target_count: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-white font-black text-center focus:border-green-500 outline-none" /></div><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Thưởng XP</label><input type="number" min="0" required value={questForm.reward_exp} onChange={e => setQuestForm({ ...questForm, reward_exp: e.target.value })} className="w-full bg-[#1f1f3a] border border-white/10 rounded-xl p-3 text-primary font-black text-center focus:border-green-500 outline-none" /></div><div><label className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2 block">Chu Kỳ Lặp</label><select value={questForm.type} onChange={e => setQuestForm({ ...questForm, type: e.target.value })} className="w-full bg-[#252538] border border-white/10 rounded-xl p-3 text-white text-sm font-bold cursor-pointer focus:border-green-500 outline-none"><option value="daily">Hàng Ngày</option><option value="weekly">Hàng Tuần</option><option value="achievement">Thành Tựu (1 lần)</option></select></div></div><div className="flex gap-4 mt-2"><button type="button" onClick={() => setShowQuestModal(false)} className="flex-1 py-3 rounded-xl bg-gray-700 text-white font-bold hover:bg-gray-600 transition-all">Hủy Bỏ</button><button type="submit" className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold shadow-lg shadow-green-900/20 hover:bg-green-500 hover:shadow-green-900/40 transition-all flex items-center justify-center gap-2"><RiSave3Line size={18} /> {isEditingQuest ? 'Cập Nhật' : 'Tạo Nhiệm Vụ'}</button></div></form></div>
                 </div>
             )}
         </div>
