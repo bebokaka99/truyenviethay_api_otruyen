@@ -152,4 +152,4 @@ Tạo file `.env` trong thư mục `server/`:
 ## 📝 License
 
 Dự án được phát triển cho mục đích học tập và cộng đồng.\
-© 2024 TruyenVietHay Project
+© 2025 TruyenVietHay Project
