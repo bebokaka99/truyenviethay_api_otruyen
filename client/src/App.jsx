@@ -21,6 +21,7 @@ import SearchPage from './pages/SearchPage';
 import NotFoundPage from './pages/NotFoundPage'; 
 import AboutPage from './pages/AboutPage'; 
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 // --- ADMIN PAGES ---
 import DashboardPage from './pages/admin/DashboardPage';
@@ -58,7 +59,7 @@ function App() {
         <Route path="/danh-sach" element={<ListPage />} />
         <Route path="/tim-kiem" element={<SearchPage />} />
         <Route path="/xep-hang" element={<RankingPage />} />
-        
+        <Route path="/thong-bao" element={<NotificationsPage />} />
         {/* --- AUTHENTICATED ROUTES (Không cần ProtectedRoute vì logic đã được handle bên trong từng Page) --- */}
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/lich-su" element={<HistoryPage />} />
